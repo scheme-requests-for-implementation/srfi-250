@@ -44,15 +44,15 @@ applications.  A hash table is a data structure that:</p>
 </ul>
 
 <p>
-Unlike the hash tables of <a
-href="https://srfi.schemers.org/srfi-125/">SRFI 125</a>, which
-is the direct ancestor of this specification, the hash tables described
+Unlike the hash tables of <a href="https://srfi.schemers.org/srfi-125/">SRFI 125</a>,
+which is the direct ancestor of this specification, the hash tables described
 here are ordered by insertion: that is, associations inserted earlier in
 the history of the hash table appear earlier in the ordering.  Advances
 in the implementations of hash tables, as provided by C++, Python,
 JavaScript, etc. makes the provision of this new facility practical.
 As a result, the hash tables of this SRFI do not interoperate with the
-hash tables of SRFI 125, SRFI 126, or existing R6RS implementations.</p>
+hash tables of SRFI 125, <a href="https://srfi.schemers.org/srfi-126/">SRFI 126</a>,
+or existing R6RS implementations.</p>
 
 <h2 id="rationale">Rationale</h2>
 
@@ -65,7 +65,7 @@ data structure.  Therefore, what needs to be defended is not
 the data structure but the procedures.  This SRFI
 supports a great many convenience
 procedures on top of the basic hash table interfaces provided
-by <a href="https://srfi.schemers.org/srfi-69/srfi-69.html">SRFI 69</a>
+by <a href="https://srfi.schemers.org/srfi-69/">SRFI 69</a>
 and
 <a href="http://www.r6rs.org/final/html/r6rs-lib/r6rs-lib-Z-H-14.html">R6RS</a>.
 Modulo the question of association ordering,
@@ -79,7 +79,7 @@ There is no support for thread safety or weakness.</p>
 
 <p>
 This specification depends on
-<a href="https://srfi.schemers.org/srfi-128/srfi-128.html">SRFI 128</a>
+<a href="https://srfi.schemers.org/srfi-128/">SRFI 128</a>
 comparators, which package a type test, an equality predicate, and a
 hash function into a single bundle.</p>
 
@@ -141,7 +141,7 @@ In addition, the following sources are acknowledged:</p>
     <a href="http://www.iro.umontreal.ca/~gambit/doc/gambit-c.html#Tables">Gambit</a>.</li>
   <li>The procedures <code>hash-table-unfold</code> and
     <code>hash-table-count</code> were suggested by
-    <a href="https://srfi.schemers.org/srfi-1/srfi-1.html">SRFI 1</a>.  </li>
+    <a href="https://srfi.schemers.org/srfi-1/">SRFI 1</a>.  </li>
   <li>The procedures <code>hash-table=?</code> and
     <code>hash-table-map</code> were suggested by
     <a href="http://hackage.haskell.org/packages/archive/containers/0.5.2.1/doc/html/Data-Map-Strict.html">Haskell's Data.Map.Strict module</a>.</li>
@@ -284,7 +284,7 @@ as separate arguments or packaged up into a comparator.</p>
 
 <p>
 The constraints on equality predicates and hash functions are given in
-<a href="https://srfi.schemers.org/srfi-128/srfi-128.html">SRFI 128</a>.</p>
+<a href="https://srfi.schemers.org/srfi-128/">SRFI 128</a>.</p>
 
 <p>
 (R6RS <code>make-eq-hashtable</code>, <code>make-eqv-hashtable</code>,
@@ -706,7 +706,7 @@ are not present in <em>hash-table<sub>1</sub></em> to
 <p>
 The current sample implementation is in the code repository of this
 SRFI.  It relies upon
-<a href="https://srfi.schemers.org/srfi-128/srfi-128.html">SRFI 128</a>.</p>
+<a href="https://srfi.schemers.org/srfi-128/">SRFI 128</a>.</p>
 
 <h2 id="acknowledgements">Acknowledgements</h2>
 
