@@ -24,10 +24,11 @@ applications.  A hash table is a data structure that:</p>
 <ul>
   <li>Is disjoint from all other types.</li>
   <li>Provides a mapping from objects known as <em>keys</em>
-    to corresponding objects known as <em>values</em>.</li>
-  <li>Keys may be any Scheme objects in some kinds of hash tables,
-    but are restricted in other kinds.</li>
-  <li>Values may be any Scheme objects.</li>
+    to corresponding objects known as <em>values</em>.
+    <ul>
+      <li>Keys may be any Scheme objects in some kinds of hash tables,
+        but are restricted in other kinds.</li>
+      <li>Values may be any Scheme objects.</li></ul></li>
   <li>Provides an <em>equality predicate</em> which defines
     when a proposed key is the same as an existing key.  No table
     may contain more than one value for a given key.</li>
