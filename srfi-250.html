@@ -55,6 +55,16 @@ As a result, the hash tables of this SRFI do not interoperate with the
 hash tables of SRFI 125, <a href="https://srfi.schemers.org/srfi-126/">SRFI 126</a>,
 or existing R6RS implementations.</p>
 
+<h2 id="issues">Issues</h2>
+
+<ul>
+  <li>It would be useful for <code>hash-table-map</code> to pass both
+    the key and the value to <em>proc</em>, but that would make the
+    API incompatible with SRFI 125.  Rather than changing it in this
+    way, a variant of <code>hash-table-map</code> could be added,
+    under a different name, that passes both key and value.</li>
+</ul>
+
 <h2 id="rationale">Rationale</h2>
 
 <p>
@@ -201,8 +211,9 @@ It is an error if the procedure argument of <code>hash-table-find</code>,
 or <code>hash-table-prune!</code> mutates the hash table being walked.</p>
 
 <p>
-It is an error to pass two hash tables that have different comparators
-or equality predicates to any of the procedures of this SRFI.</p>
+It is an error to pass two hash tables that have different (in the
+sense of <code>eq?</code>) comparators to any of the procedures of
+this SRFI.</p>
 
 <p>
 Implementations are permitted to ignore user-specified hash
