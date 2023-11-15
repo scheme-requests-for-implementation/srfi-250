@@ -37,11 +37,11 @@ applications.  A hash table is a data structure that:</p>
   <li>Supports mutation as the primary means of setting the
     contents of a table.</li>
   <li>Provides key lookup and destructive update in (expected)
-    amortized constant time, provided a satisfactory hash function is
-    available.</li>
+    amortized constant time, provided that a satisfactory hash
+    function is available.</li>
   <li>Does not guarantee that whole-table operations work in
-    the presence of concurrent mutation of the whole hash table
-    (values may be safely mutated).</li>
+    the presence of concurrent mutation of the whole hash table.
+    (Values may be safely mutated.)</li>
 </ul>
 
 <p>
@@ -50,7 +50,7 @@ which is the direct ancestor of this specification, the hash tables described
 here are ordered by insertion: that is, associations inserted earlier in
 the history of the hash table appear earlier in the ordering.  Advances
 in the implementations of hash tables, as provided by C++, Python,
-JavaScript, etc. makes the provision of this new facility practical.
+JavaScript, etc., make the provision of this new facility practical.
 As a result, the hash tables of this SRFI do not interoperate with the
 hash tables of SRFI 125, <a href="https://srfi.schemers.org/srfi-126/">SRFI 126</a>,
 or existing R6RS implementations.</p>
@@ -86,7 +86,7 @@ hash function into a single bundle.</p>
 
 <p>
 The relatively few hash table procedures in R6RS are all available
-in this SRFI under somewhat different names.  
+in this SRFI under somewhat different names.
 This SRFI adopts SRFI 69's term <code>hash-table</code>
 rather than R6RS's <code>hashtable</code>, because of the universal
 use of "hash table" rather than "hashtable" in other computer languages and
@@ -110,7 +110,7 @@ are not in this SRFI:</p>
     (which does not exist in Scheme).</li>
   <li><code>With-hash-table-iterator</code> is a hash
     table external iterator implemented as a local macro.</li>
-  <li><code>Sxhash</code> is a implementation-specific
+  <li><code>Sxhash</code> is an implementation-specific
     hash function for the <code>equal</code> predicate.
     It has the property that objects in different instantiations
     of the same Lisp implementation that are
@@ -299,6 +299,7 @@ Returns a newly allocated hash table, created as if by
 <code>make-hash-table</code> using <em>comparator</em>.
 For each pair of arguments, an association is added to the
 new hash table with <em>key</em> as its key and <em>value</em>
+as its value.
 This procedure returns an immutable hash table.
 If the same key (in the sense of the equality predicate) is
 specified more than once, it is an error.</p>
@@ -340,7 +341,7 @@ Common Lisp <code>hash-table-p</code>)</p>
 
 <p>Returns <code>#t</code> if there is any association to <em>key</em>
 in <em>hash-table</em>, and <code>#f</code> otherwise.  Must execute
-in expected amortized constant time.  
+in expected amortized constant time.
 (R6RS <code>hashtable-contains?</code>)</p>
 
 <p>
@@ -400,7 +401,7 @@ Semantically equivalent to, but may be more efficient than, the following code:<
 (R6RS <code>hashtable-ref</code>; Common Lisp <code>gethash</code>)</p>
 
 <p>
-<code>hash-table-comparator </code><em>hash-table</em><code>)</code></p>
+<code>(hash-table-comparator </code><em>hash-table</em><code>)</code></p>
 
 <p>
 Returns a comparator equivalent to the comparator with which
@@ -412,7 +413,7 @@ Returns a comparator equivalent to the comparator with which
 
 <p>
 The following procedures alter the associations in a hash table
-either unconditionally, or conditionally on the presence or absence
+either unconditionally or conditionally on the presence or absence
 of a specified key.  It is an error to add an association to a hash
 table whose key does not satisfy the type test predicate of the
 comparator used to create the hash table.</p>
@@ -466,7 +467,7 @@ Semantically equivalent to, but may be more efficient than, the following code:<
 </blockquote>
 
 <p>
-Must execute in expected amortized constant time.  Returns an</p>
+Must execute in expected amortized constant time.  Returns an unspecified value.</p>
 
 <p>
 <code>(hash-table-update!/default </code><em>hash-table key updater default</em><code>)</code></p>
