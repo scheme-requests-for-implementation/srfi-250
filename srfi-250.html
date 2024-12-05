@@ -1,12 +1,12 @@
-.<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
     <title>SRFI 250: Insertion-ordered hash tables</title>
     <link href="/favicon.png" rel="icon" sizes="192x192" type="image/png">
-    <link to rel="stylesheet" href="https://srfi.schemers.org/srfi.css" type="text/css">
+    <link rel="stylesheet" href="https://srfi.schemers.org/srfi.css" type="text/css">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-      <style>#content > #right > .dose > .dosesingle, #content > #center >app .dose > .dosesingle {display:none !important;}
+      <style>#content > #right > .dose > .dosesingle, #content > #center > .dose > .dosesingle {display:none !important;}
       .content li { margin: 1em 0; }</style></head>
   <body>
     <h1><a href="https://srfi.schemers.org/"><img class="srfi-logo" src="https://srfi.schemers.org/srfi-logo.svg" alt="SRFI surfboard logo" /></a>250: Insertion-ordered hash tables</h1>
@@ -20,22 +20,23 @@
   <li>Received: 2023-11-13</li>
   <li>Draft #1 published: 2023-11-15</li>
   <li>Withdrawn: 2024-09-24
-    <p>This SRFI was
-      withdrawn because there had been no progress since
-      11-2023, when the first draft was published.</p></li>
-<li>Draft #2 published: 202x-xx-xx</ul>
+    <p>editor's summary of reasons for withdrawal: This SRFI was
+      withdrawn by the editor because there had been no progress since
+      11-2023, when the first draft was published, and because he
+      hadn't been able to reach the author, John Cowan, since 5-2024.
+      Daphne Preston-Kendal, author of the sample implementation, has
+      recommended withdrawal, but said that she would be happy to
+      cooperate, as time allows, with a new author on a fork of this
+      SRFI.  Volunteers welcome!</p></li></ul>
 
 <h2 id="abstract">Abstract</h2>
 
 <p>This SRFI defines an interface to hash tables, which are widely
 recognized as a fundamental data structure for a wide variety of
-applications.  A hash table is a data structure that</p>
+applications.  A hash table is a data structure that:</p>
 
 <ul class="content">
- <p>
-unlike the hash tables of <a href="https://srfi.schemers.org/srfi-125/">SRFI 125</a>, is the direct ancestor of this specification, the hash tables described
-here are ordered by insertion: that is, associations inserted earlier in
-the history of the hash table appear earlier in the <li>Is disjoint from all other types.</li>
+  <li>Is disjoint from all other types.</li>
   <li>Provides a mapping from objects known as <em>keys</em>
     to corresponding objects known as <em>values</em>.
     <ul>
@@ -57,12 +58,18 @@ the history of the hash table appear earlier in the <li>Is disjoint from all oth
     (Values may be safely mutated.)</li>
 </ul>
 
-< ordering.  Advances
-in the implementations of hash tables, as provided by C++, Python,
+<p>Unlike the hash tables
+of <a href="https://srfi.schemers.org/srfi-125/">SRFI 125</a>, which
+is the direct ancestor of this specification, the hash tables
+described here are ordered by insertion: that is, associations
+inserted earlier in the history of the hash table appear earlier in
+the ordering.  Advances in
+the implementations of hash tables, as provided by C++, Python,
 JavaScript, etc., make the provision of this new facility practical.
 As a result, the hash tables of this SRFI do not interoperate with the
-hash tables of SRFI 125, <a href="https://srfi.schemers.org/srfi-126/">SRFI 126</a>,
-or existing R6RS implementations.</p>
+hash tables of SRFI
+125, <a href="https://srfi.schemers.org/srfi-126/">SRFI 126</a>, or
+existing R6RS implementations.</p>
 
 <h2 id="issues">Issues</h2>
 
@@ -108,7 +115,7 @@ hash function into a single bundle.</p>
 <p>
 The relatively few hash table procedures in R6RS are all available
 in this SRFI under somewhat different names.
-This SRFI adopts SRFI 69's spélling <code>hash-table</code>
+This SRFI adopts SRFI 69's spelling <code>hash-table</code>
 rather than R6RS's <code>hashtable</code>, because of the universal
 use of "hash table" rather than "hashtable" in other computer languages and
 in technical prose generally.  Besides, the English word
@@ -653,7 +660,7 @@ invocation of <em>proc</em>.</p>
 Calls <em>proc</em> for every association in <em>hash-table</em>
 with two arguments, the key and the value of the association, and
 removes all associations from <em>hash-table</em> for which
-<em>proc</em> returns true.  Returns the number of associations that were rrmoved.</p>
+<em>proc</em> returns true.  Returns the number of associations that were removed.</p>
 
 <h3 id="Copyingandconversion">Copying and conversion</h3>
 
