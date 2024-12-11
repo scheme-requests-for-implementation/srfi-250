@@ -11,7 +11,7 @@ keywords: [[https://srfi.schemers.org/?keywords=data-structure][Data Structure]]
 
 This repository hosts [[https://srfi.schemers.org/srfi-250/][SRFI 250]]: Insertion-ordered hash tables, a [[https://srfi.schemers.org/][Scheme Request for Implementation]].
 
-This SRFI is in /withdrawn/ status.
+This SRFI is in /draft/ status.
 See also [[/srfi-69/][SRFI 69: Basic hash tables]], [[/srfi-125/][SRFI 125: Intermediate hash tables]], [[/srfi-126/][SRFI 126: R6RS-based hashtables]], and [[/srfi-128/][SRFI 128: Comparators (reduced)]].
 The full documentation for this SRFI can be found in the [[https://srfi.schemers.org/srfi-250/srfi-250.html][SRFI Document]].
 
