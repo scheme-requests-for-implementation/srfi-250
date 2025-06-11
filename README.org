@@ -1,5 +1,5 @@
 
-# SPDX-FileCopyrightText: 2024 Arthur A. Gleckler
+# SPDX-FileCopyrightText: 2025 Arthur A. Gleckler
 # SPDX-License-Identifier: MIT
 * SRFI 250: Insertion-ordered hash tables
 
