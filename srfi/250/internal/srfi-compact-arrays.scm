@@ -1,0 +1,65 @@
+(define (make-compact-array size)
+  (cond ((< size #xFF) (make-bytevector size #xFF))
+        ((< size #xFFFF) (make-u16vector size #xFFFF))
+        ((< size #xFFFFFFFF) (make-u32vector size #xFFFFFFFF))
+        (else (make-u64vector size #xFFFFFFFFFFFFFFFF))))
+
+(define (compact-array-ref sa idx)
+  (define (max-to n) (lambda (x) (if (= x n) #f x)))
+  (cond ((and (bytevector? sa) (bytevector-u8-ref sa idx))
+         => (max-to #xFF))
+        ((and (u16vector? sa) (u16vector-ref sa idx))
+         => (max-to #xFFFF))
+        ((and (u32vector? sa) (u32vector-ref sa idx))
+         => (max-to #xFFFFFFFF))
+        ((and (u64vector? sa) (u64vector-ref sa idx))
+         => (max-to #xFFFFFFFFFFFFFFFF))
+        (else (assertion-violation 'compact-array-ref
+                                   "not a compact array"
+                                   sa))))
+
+(define (compact-array-set? sa idx)
+  (not (not (compact-array-ref sa idx))))
+
+(define (compact-array-set! sa idx val)
+  (define (set-with-max setter max)
+    (if (>= val max)
+        (assertion-violation 'compact-array-set!
+                             "can't store value in compact array, try upgrading it"
+                             val)
+        (setter sa idx val)))
+  (cond ((bytevector? sa)
+         (set-with-max bytevector-u8-set! #xFF))
+        ((u16vector? sa)
+         (set-with-max u16vector-set! #xFFFF))
+        ((u32vector? sa)
+         (set-with-max u32vector-set! #xFFFFFFFF))
+        ((u64vector? sa)
+         (set-with-max u64vector-set! #xFFFFFFFFFFFFFFFF))
+        (else (error "not a compact array" sa))))
+
+(define (compact-array-delete! sa idx)
+  (cond ((bytevector? sa)
+         (bytevector-u8-set! sa idx #xFF))
+        ((u16vector? sa)
+         (u16vector-set! sa idx #xFFFF))
+        ((u32vector? sa)
+         (u32vector-set! sa idx #xFFFFFFFF))
+        ((u64vector? sa)
+         (u64vector-set! sa idx #xFFFFFFFFFFFFFFFF))
+        (else (assertion-violation 'compact-array-delete!
+                                   "not a compact array"
+                                   sa))))
+
+(define (compact-array-length sa)
+  (cond ((bytevector? sa)
+         (bytevector-length sa))
+        ((u16vector? sa)
+         (u16vector-length sa))
+        ((u32vector? sa)
+         (u32vector-length sa))
+        ((u64vector? sa)
+         (u64vector-length sa))
+        (else (assertion-violation 'compact-array-length
+                                   "not a compact array"
+                                   sa))))

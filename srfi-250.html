@@ -9,9 +9,9 @@
       <style>#content > #right > .dose > .dosesingle, #content > #center > .dose > .dosesingle {display:none !important;}
       .content li { margin: 1em 0; }</style></head>
   <body>
-    <h1><a href="https://srfi.schemers.org/"><img class="srfi-logo" src="https://srfi.schemers.org/srfi-logo.svg" alt="SRFI surfboard logo" /></a>250: Insertion-ordered hash tables</h1>
+    <h1><a href="https://srfi.schemers.org/"><img class="srfi-logo" src="https://srfi.schemers.org/srfi-logo.svg" alt="SRFI surfboard logo"></a>250: Insertion-ordered hash tables</h1>
 
-<p>by John Cowan (shepherd, text), Will Clinger (text), Daphne Preston-Kendal (implementation)</p>
+<p>by John Cowan and Daphne Preston-Kendal, based on work by Will Clinger and Panu Kalliokoski</p>
 
 <h2 id="status">Status</h2>
 
@@ -38,16 +38,16 @@ applications.  A hash table is a data structure that:</p>
 
 <ul class="content">
   <li>Is disjoint from all other types.</li>
-  <li>Provides a mapping from objects known as <em>keys</em>
-    to corresponding objects known as <em>values</em>.
+  <li>Provides a mapping from objects known as <dfn>keys</dfn>
+    to corresponding objects known as <dfn>values</dfn>.
     <ul>
       <li>Keys may be any Scheme objects in some kinds of hash tables,
         but are restricted in other kinds.</li>
       <li>Values may be any Scheme objects.</li></ul></li>
-  <li>Provides an <em>equality predicate</em> which defines
+  <li>Provides an <dfn>equality predicate</dfn> which defines
     when a proposed key is the same as an existing key.  No table
     may contain more than one value for a given key.</li>
-  <li>Provides a <em>hash function</em> which maps a candidate
+  <li>Provides a <dfn>hash function</dfn> which maps a candidate
     key into a non-negative exact integer.</li>
   <li>Supports mutation as the primary means of setting the
     contents of a table.</li>
@@ -116,7 +116,7 @@ This SRFI adopts SRFI 69's spelling <code>hash-table</code>
 rather than R6RS's <code>hashtable</code>, because of the universal
 use of "hash table" rather than "hashtable" in other computer languages and
 in technical prose generally.  Besides, the English word
-<em>hashtable</em> obviously means something that can be ... hashted.
+<i>hashtable</i> obviously means something that can be ... hashted.
 It would be trivial to provide the R6RS names on top of this SRFI.</p>
 
 <h3 id="CommonLispcompatibility">Common Lisp compatibility</h3>
@@ -168,11 +168,14 @@ In addition, the following sources are acknowledged:</p>
   <li>The procedures <code>hash-table-unfold</code> and
     <code>hash-table-count</code> were suggested by
     <a href="https://srfi.schemers.org/srfi-1/">SRFI 1</a>.  </li>
-  <li>The procedures <code>hash-table=?</code> and
+  <li>The procedures <code>hash-table=</code> and
     <code>hash-table-map</code> were suggested by
     <a href="https://hackage.haskell.org/package/containers-0.5.2.1/docs/Data-Map-Strict.html">Haskell's Data.Map.Strict module</a>.</li>
   <li>The procedure <code>hash-table-map-&gt;list</code> is from
     <a href="https://www.gnu.org/software/guile/manual/html_node/Hash-Table-Reference.html">Guile</a>.</li>
+  <li>The cursor-based interface to hash table iteration is based
+    on the version from
+    <a href="https://docs.racket-lang.org/reference/hashtables.html#%28def._%28%28quote._~23~25kernel%29._hash-iterate-first%29%29">Racket</a>.</li>
 </ul>
 
 <p>
@@ -196,21 +199,43 @@ The native hash tables of
 and <a href="https://code.google.com/archive/p/femtolisp/wikis/APIReference.wiki">FemtoLisp</a>
 were also investigated, but no additional procedures were incorporated.</p>
 
+<p>The <code>hash-table-keys</code>, <code>hash-table-values</code>,
+<code>hash-table-entries</code> (from SRFI 69) and the corresponding
+vector-based versions (used in R6RS) have been removed from this SRFI
+in favour of the cursor-based iteration interface.
+
 <h3 id="Pronunciation">Pronunciation</h3>
 
 <p>
-The slash in the names of some procedures can be pronounced "with".</p>
+The slash in the names of some procedures can be pronounced ‘with’.</p>
+
+<h3 id="editorial-conventions">Editorial conventions</h3>
+
+<p>
+This SRFI uses a convention from the Racket documentation, which
+extends the usual Scheme specification use of ellipsis (‘...’) in
+procedure entry headers.
+
+<p>
+Namely, when two specified formals are followed by a pair of ellipses,
+it means there must be any even number of arguments in sequence
+(including zero arguments). The zeroth, second, fourth, etc. actual
+arguments are treated as the values of the first specified formal, and
+the first, third, fifth, etc. actual arguments as the corresponding
+values of the second of the specified formals.
 
 <h2 id="specification">Specification</h2>
 
 <p>
 The procedures in this SRFI are in the <code>(srfi 250)</code> library
-(or <code>(srfi :250)</code> on R6RS).</p>
+(or <code>(srfi :250 hash-tables)</code> on R6RS).</p>
 
 <p>
-All references to "executing in expected amortized constant time"
-presuppose that a satisfactory hash function is available.  Arbitrary
-or impure hash functions can make a hash of any implementation.</p>
+All references to ‘executing in expected amortized constant time’
+presuppose that a satisfactory hash function is available. <span
+title="dpk disclaims all responsibility for this joke">Arbitrary or
+impure hash functions can make a hash of any
+implementation.</span></p>
 
 <p>
 Hash tables are allowed to cache the results of calling the equality
@@ -219,7 +244,7 @@ function being called exactly once for every primitive hash table
 operation: it may be called zero, one, or more times.</p>
 
 <p>
-It is an error if the procedure argument of
+It is undefined behaviour if the procedure argument of
 <code>hash-table-find</code>, <code>hash-table-count</code>,
 <code>hash-table-map</code>, <code>hash-table-for-each</code>,
 <code>hash-table-map!</code>, <code>hash-table-map-&gt;list</code>,
@@ -247,43 +272,66 @@ the context of implementation-provided hash tables.  It can
 of course be exposed by an implementation as an extension,
 with suitable warnings against inappropriate uses.</p>
 
-<p>It is an error to mutate a key during or after its insertion
-into a hash table in such a way that the hash function of the
-table will return a different result when applied to that key.</p>
+<p>It is undefined behaviour to mutate a key during or after its
+insertion into a hash table in such a way that the hash function of
+the table will return a different result when applied to that key.</p>
 
 <h3 id="Index">Index</h3>
 <ul class="content">
   <li><a class="wiki" href="#Constructors">Constructors</a>:
-    <code>make-hash-table</code>, <code>hash-table</code>,
-    <code>hash-table-unfold</code>, <code>alist-&gt;hash-table</code></li>
+    <code>make-hash-table</code>,
+    <code>hash-table</code>,
+    <code>hash-table-unfold</code>,
+    <code>alist-&gt;hash-table</code>
+  </li>
   <li><a class="wiki" href="#Predicates">Predicates</a>:
-    <code>hash-table?</code>, <code>hash-table-contains?</code>,
-    <code>hash-table-empty?</code>, <code>hash-table=?</code>,
-    <code>hash-table-mutable?</code></li>
+    <code>hash-table?</code>,
+    <code>hash-table-contains?</code>,
+    <code>hash-table-empty?</code>,
+    <code>hash-table=?</code>,
+    <code>hash-table-mutable?</code>
+  </li>
   <li><a class="wiki" href="#Accessors">Accessors</a>:
-    <code>hash-table-ref</code>, <code>hash-table-ref/default</code>,
-    <code>hash-table-comparator</code></li>
+    <code>hash-table-ref</code>,
+    <code>hash-table-ref/default</code>,
+    <code>hash-table-comparator</code>
+  </li>
   <li><a class="wiki" href="#Mutators">Mutators</a>:
+    <code>hash-table-add!</code>,
+    <code>hash-table-replace!</code>,
     <code>hash-table-set!</code>,
     <code>hash-table-delete!</code>,
-    <code>hash-table-intern!</code>, <code>hash-table-update!</code>,
+    <code>hash-table-intern!</code>,
+    <code>hash-table-update!</code>,
     <code>hash-table-update!/default</code>,
-    <code>hash-table-pop!</code>, <code>hash-table-clear!</code></li>
+    <code>hash-table-pop!</code>,
+    <code>hash-table-clear!</code>
+  </li>
   <li><a class="wiki" href="#Thewholehashtable">The whole hash table</a>:
-    <code>hash-table-size</code>, <code>hash-table-keys</code>,
-    <code>hash-table-values</code>, <code>hash-table-entries</code>,
-    <code>hash-table-key-vector</code>,
-    <code>hash-table-value-vector</code>, <code>hash-table-entry-vectors</code>,
+    <code>hash-table-size</code>,
     <code>hash-table-keys</code>,
-    <code>hash-table-values</code>, <code>hash-table-entries</code>,
-    <code>hash-table-find</code>, <code>hash-table-count</code></li>
+    <code>hash-table-values</code>,
+    <code>hash-table-entries</code>,
+    <code>hash-table-key-vector</code>,
+    <code>hash-table-value-vector</code>,
+    <code>hash-table-entry-vectors</code>,
+    <code>hash-table-keys</code>,
+    <code>hash-table-values</code>,
+    <code>hash-table-entries</code>,
+    <code>hash-table-find</code>,
+    <code>hash-table-count</code>
+  </li>
   <li><a class="wiki" href="#Mappingandfolding">Mapping and
-    folding</a>: <code>hash-table-map</code>,
-    <code>hash-table-for-each</code>, <code>hash-table-map!</code>,
+      folding</a>:
+    <code>hash-table-map</code>,
+    <code>hash-table-for-each</code>,
+    <code>hash-table-map!</code>,
     <code>hash-table-map-&gt;list</code>,
-    <code>hash-table-fold</code>, <code>hash-table-fold-left</code>,
+    <code>hash-table-fold</code>,
+    <code>hash-table-fold-left</code>,
     <code>hash-table-fold-right</code>,
-    <code>hash-table-prune!</code></li>
+    <code>hash-table-prune!</code>
+  </li>
   <li><a class="wiki" href="#Lowleveliteration">Low-level
     iteration</a>:
     <code>hash-table-cursor-first</code>,
@@ -295,26 +343,41 @@ table will return a different result when applied to that key.</p>
     <code>hash-table-cursor-key+value</code>,
     <code>hash-table-cursor-at-end?</code>
   <li><a class="wiki" href="#Copyingandconversion">Copying and conversion</a>:
-    <code>hash-table-copy</code>, <code>hash-table-empty-copy</code>,
-    <code>hash-table-&gt;alist</code></li>
+    <code>hash-table-copy</code>,
+    <code>hash-table-empty-copy</code>,
+    <code>hash-table-&gt;alist</code>
+  </li>
   <li><a class="wiki" href="#Hashtablesassets">Hash tables as sets</a>:
     <code>hash-table-union!</code>,
     <code>hash-table-intersection!</code>,
-    <code>hash-table-difference!</code>, <code>hash-table-xor!</code></li>
+    <code>hash-table-difference!</code>,
+    <code>hash-table-xor!</code>
+  </li>
 </ul>
 
 <h3 id="Constructors">Constructors</h3>
 
-<p>Note that the argument <code>k</code> is a positive integer
+<p>Note that the argument <var>k</var> is a nonnegative integer
 representing the initial capacity of the hashtable being created (that
-is, the number of associations it can hold without having to grow).
-If not present, the initial capacity is implementation-dependent.</p>
+is, the number of associations it can hold without having to grow). If
+not present, the initial capacity is implementation-dependent. An
+implementation may be significantly more efficient in time and/or
+memory if it is a correct value of <var>k</var> when a hash table is
+created (meaning a value which actually corresponds to the maximum
+size of the hash table throughout its existence).
+</p>
 
-<p><code>(make-hash-table </code><em>comparator</em> [ <em>k</em> ]<code>)</code></p>
+<h4>
+  <code>(make-hash-table </code><var>comparator</var><code>)</code> <br>
+  <code>(make-hash-table </code><var>comparator</var> <var>k</var><code>)</code>
+</h4>
 
 <p>
 Returns a newly allocated hash table whose equality predicate and
-hash function are extracted from <em>comparator</em>.</p>
+hash function are extracted from <var>comparator</var>.</p>
+
+<p>
+It is an assertion violation if <var>comparator</var> is not a hash comparator.
 
 <p>
 As mentioned above, implementations are free to use an appropriate
@@ -332,81 +395,108 @@ The constraints on equality predicates and hash functions are given in
 (R6RS <code>make-eq-hashtable</code>, <code>make-eqv-hashtable</code>,
 and <code>make-hashtable</code>; Common Lisp <code>make-hash-table</code>)</p>
 
-<p>
-<code>(hash-table </code><em>comparator</em> [ <em>key value</em> ] ...<code>)</code></p>
+<h4>
+  <code>(hash-table </code><var>comparator</var> <var>key</var><sub>0</sub> <var>value</var><sub>0</sub> ... ...<code>)</code>
+</h4>
 
 <p>
 Returns a newly allocated hash table, created as if by
-<code>make-hash-table</code> using <em>comparator</em>.
+<code>make-hash-table</code> using <var>comparator</var>.
 For each pair of arguments, an association is added to the
-new hash table with <em>key</em> as its key and <em>value</em>
+new hash table with <var>key</var> as its key and <var>value</var>
 as its value.
-This procedure returns an immutable hash table.
-If the same key (in the sense of the equality predicate) is
-specified more than once, it is an error.</p>
 
 <p>
-<code>(hash-table-unfold </code><em>stop? mapper successor seed comparator</em> [ <em>k</em> ]<code>)</code></p>
+It is an assertion violation if any of the <var>key</var>s do not
+satisfy the type test of the <var>comparator</var>. If any of the
+<var>key</var>s are the same as one another in the sense of the
+<var>comparator</var>’s hash function and equality predicate, it is
+unspecified whether it is an assertion violation, or if an arbitrary
+one of the <var>value</var>s of those <var>key</var>s will appear in the
+returned hash table.
+
+<h4>
+  <code>(hash-table-unfold </code><var>stop?</var> <var>mapper</var> <var>successor</var> <var>seed</var> <var>comparator</var><code>)</code> <br>
+  <code>(hash-table-unfold </code><var>stop?</var> <var>mapper</var> <var>successor</var> <var>seed</var> <var>comparator</var> <var>k</var><code>)</code>
+</h4>
 
 <p>
 Create a new hash table as if by <code>make-hash-table</code> using
-<em>comparator</em> and the <em>args</em>.  If the result of applying
-the predicate <em>stop?</em> to <em>seed</em> is true, return the hash
-table.  Otherwise, apply the procedure <em>mapper</em> to <em>seed</em>.
-<em>Mapper</em> returns two values, which are inserted into the hash
-table as the key and the value respectively.  Then get a new seed by
-applying the procedure <em>successor</em> to <em>seed</em>, and repeat
-this algorithm.</p>
+<var>comparator</var> (and, if given, the value of <var>k</var>). If
+the result of applying the predicate <var>stop?</var> to <var>seed</var>
+is true, return the hash table. Otherwise, apply the procedure
+<var>mapper</var> to <var>seed</var>. <var>Mapper</var> returns two values,
+which are inserted into the hash table as the key and the value
+respectively. Then get a new seed by applying the procedure
+<var>successor</var> to <var>seed</var>, and repeat this algorithm.
 
 <p>
-<code>(alist-&gt;hash-table </code><em>alist comparator</em> [ <em>k</em> ]<code>)</code></p>
+This procedure may not be continuation-safe.
+
+<h4>
+  <code>(alist-&gt;hash-table </code><var>alist</var> <var>comparator</var><code>)</code> <br>
+  <code>(alist-&gt;hash-table </code><var>alist</var> <var>comparator</var> <var>k</var><code>)</code>
+</h4>
 
 <p>
 Returns a newly allocated hash-table as if by
-<code>make-hash-table</code> using <em>comparator</em> and the
-optional <em>k</em> value. It is then initialized from the
-associations of <em>alist</em>. Key-value pairings are stored in the
+<code>make-hash-table</code> using <var>comparator</var> and the
+optional <var>k</var> value. It is then initialized from the
+associations of <var>alist</var>. Key-value pairings are stored in the
 created hash table in reverse order to the one in which they appear
-in the input <em>alist</em>, and associations earlier in the list take
+in the input <var>alist</var>, and associations earlier in the list take
 precedence over those that come later.</p>
 
 <h3 id="Predicates">Predicates</h3>
 
-<p>
-<code>(hash-table? </code><em>obj</em><code>)</code></p>
+<h4>
+ <code>(hash-table? </code><var>obj</var><code>)</code>
+</h4>
 
 <p>
-Returns <code>#t</code> if <em>obj</em> is a hash table, and
+Returns <code>#t</code> if <var>obj</var> is a hash table, and
 <code>#f</code> otherwise.  (R6RS <code>hashtable?</code>;
 Common Lisp <code>hash-table-p</code>)</p>
 
-<p>
-<code>(hash-table-contains? </code><em>hash-table key</em><code>)</code></p>
+<h4>
+<code>(hash-table-contains? </code><var>hash-table</var> <var>key</var><code>)</code>
+</h4>
 
-<p>Returns <code>#t</code> if there is any association to <em>key</em>
-in <em>hash-table</em>, and <code>#f</code> otherwise.  Must execute
+<p>Returns <code>#t</code> if there is any association to <var>key</var>
+in <var>hash-table</var>, and <code>#f</code> otherwise.  Must execute
 in expected amortized constant time.
 (R6RS <code>hashtable-contains?</code>)</p>
 
-<p>
-<code>(hash-table-empty? </code><em>hash-table</em><code>)</code></p>
+<h4>
+<code>(hash-table-empty? </code><var>hash-table</var><code>)</code>
+</h4>
 
 <p>
-Returns <code>#t</code> if <em>hash-table</em> contains no associations,
+Returns <code>#t</code> if <var>hash-table</var> contains no associations,
 and <code>#f</code> otherwise.</p>
 
-<p>
-<code>(hash-table= </code><em>same? hash-table<sub>1</sub> hash-table<sub>2</sub></em><code>)</code></p>
+<h4>
+  <code>(hash-table= </code><var>same?</var> <var>hash-table</var><sub>1</sub> <var>hash-table</var><sub>2</sub><code>)</code>
+</h4>
 
 <p>
-Returns <code>#t</code> if <em>hash-table<sub>1</sub></em> and
-<em>hash-table<sub>2</sub></em> have the same keys (in the sense
+Returns <code>#t</code> if <var>hash-table</var><sub>1</sub> and
+<var>hash-table</var><sub>2</sub> have the same keys (in the sense
 of their common equality predicate) and each key has the same
-value (in the sense of the <em>same?</em> procedure), and
+value (in the sense of the <var>same?</var> procedure), and
 <code>#f</code> otherwise.</p>
 
 <p>
-<code>(hash-table-mutable? </code><em>hash-table</em><code>)</code></p>
+It is an assertion violation if the equality predicates of
+<var>hash-table</var><sub>1</sub> and <var>hash-table</var><sub>2</sub>
+are not the same in the sense of the <code>eqv?</code> procedure. On
+R6RS implementations where <code>eqv?</code> is not usefully defined
+on procedures by the implementation, this assertion violation is not
+required to be raised.
+
+<h4>
+  <code>(hash-table-mutable? </code><var>hash-table</var><code>)</code>
+</h4>
 
 <p>
 Returns <code>#t</code> if the hash table is mutable.
@@ -417,35 +507,40 @@ Returns <code>#t</code> if the hash table is mutable.
 <p>
 The following procedures, given a key, return the corresponding value.</p>
 
-<p>
-<code>(hash-table-ref </code><em>hash-table key</em> [ <em>failure</em> [ <em>success</em> ] ]<code>)</code></p>
+<h4>
+  <code>(hash-table-ref </code><var>hash-table</var> <var>key</var><code>)</code> <br>
+  <code>(hash-table-ref </code><var>hash-table</var> <var>key</var> <var>failure</var><code>)</code> <br>
+  <code>(hash-table-ref </code><var>hash-table</var> <var>key</var> <var>failure</var> <var>success</var><code>)</code>
+</h4>
 
 <p>
-Extracts the value associated to <em>key</em> in <em>hash-table</em>,
-invokes the procedure <em>success</em> on it, and returns its result;
-if <em>success</em> is not provided, then the value itself is returned.
-If <em>key</em> is not contained in <em>hash-table</em> and
-<em>failure</em> is supplied, then <em>failure</em> is invoked
+Extracts the value associated to <var>key</var> in <var>hash-table</var>,
+invokes the procedure <var>success</var> on it, and returns its result;
+if <var>success</var> is not provided, then the value itself is returned.
+If <var>key</var> is not contained in <var>hash-table</var> and
+<var>failure</var> is supplied, then <var>failure</var> is invoked
 on no arguments and its result is returned.  Otherwise, it is
 an error.  Must execute in expected amortized constant time,
 not counting the time to call the procedures.</p>
 
-<p>
-<code>(hash-table-ref/default </code><em>hash-table key default</em><code>)</code></p>
+<h4>
+  <code>(hash-table-ref/default </code><var>hash-table</var> <var>key</var> <var>default</var><code>)</code>
+</h4>
 
 <p>
 Semantically equivalent to, but may be more efficient than, the following code:</p>
 <blockquote>
 
 <p>
-<code>(hash-table-ref </code><em>hash-table key</em> <code>(lambda () </code><em>default</em><code>))</code></p>
+<code>(hash-table-ref </code><var>hash-table</var> <var>key</var> <code>(lambda () </code><var>default</var><code>))</code></p>
 </blockquote>
 
 <p>
 (R6RS <code>hashtable-ref</code>; Common Lisp <code>gethash</code>)</p>
 
-<p>
-<code>(hash-table-comparator </code><em>hash-table</em><code>)</code></p>
+<h4>
+  <code>(hash-table-comparator </code><var>hash-table</var><code>)</code>
+</h4>
 
 <p>
 Returns a hash comparator whose equality function and hash function
@@ -476,89 +571,149 @@ of a specified key.  It is an error to add an association to a hash
 table whose key does not satisfy the type test predicate of the
 comparator used to create the hash table.</p>
 
-<p>
-<code>(hash-table-set! </code><em>hash-table</em> <em>arg</em> ...<code>)</code></p>
+<h4>
+  <code>(hash-table-add! </code><var>hash-table</var> <var>key</var><sub>1</sub> <var>value</var><sub>1</sub> ... ...<code>)</code>
+</h4>
 
 <p>
-Repeatedly mutates <em>hash-table</em>, creating new associations in
+Repeatedly mutates <var>hash-table</var>, creating new associations in
+it by processing the arguments from left to right. For each of the
+pairs of <var>key</var>s and <var>value</var>s, a new entry is created at
+the end of the hash table ordering, associating the <var>key</var> with
+the <var>value</var>.
+
+<p>
+It is an assertion violation if any of the <var>key</var>s is already
+associated to an entry in the <var>hash-table</var>. It is also an
+assertion violation if any of the <var>key</var>s do not satisfy the
+type test of the <var>hash-table</var>’s comparator. It is unspecified
+whether any of the other associations of <var>key</var>s to
+<var>value</var>s will have been added before the assertion violation is
+raised.
+ 
+<h4>
+  <code>(hash-table-replace! </code><var>hash-table</var> <var>key</var><sub>1</sub> <var>value</var><sub>1</sub> ... ...<code>)</code>
+</h4>
+
+<p>
+Repeatedly mutates <var>hash-table</var>, replacing the value in each
+entry for the given <var>key</var> with the corresponding
+<var>value</var>.
+
+<p>
+It is an assertion violation if any of the <var>key</var>s does not have
+an association in the <var>hash-table</var>. It is also an assertion
+violation if any of the <var>key</var>s do not satisfy the type test of
+the <var>hash-table</var>’s comparator. It is unspecified whether the
+values for any of the other <var>key</var>s will have been modified
+before the assertion violation is raised.
+
+<h4>
+  <code>(hash-table-set! </code><var>hash-table</var> <var>key</var><sub>1</sub> <var>value</var><sub>1</sub> ... ...<code>)</code>
+</h4>
+
+<p>
+Repeatedly mutates <var>hash-table</var>, creating new associations in
 it by processing the arguments from left to right. Newly created
-associations are added to the end of the hash table ordering. The
-<em>args</em> alternate between keys and values. However, if there is
-a previous association for a key, its value is updated and the
-corresponding association remains in the same position in the
-ordering. It is an error if the type check procedure of the comparator
-of <em>hash-table</em>, when invoked on a key, does not return
-<code>#t</code>. Likewise, it is an error if a key is not a valid
-argument to the equality predicate of <em>hash-table</em>. Returns an
-unspecified value. Must execute in expected amortized constant time
-per key. R6RS <code>hashtable-set!</code> and Common Lisp <code>(setf
-gethash)</code> do not handle multiple associations.</p>
+associations are added to the end of the hash table ordering. However,
+if there is a previous association for any <var>key</var>, its value is
+updated to the given <var>value</var> and the corresponding association
+remains in the same position in the ordering. Must execute in expected
+amortized constant time per key. R6RS <code>hashtable-set!</code> and
+Common Lisp <code>(setf gethash)</code> do not handle multiple
+associations.</p>
 
 <p>
-<code>(hash-table-delete! </code><em>hash-table key</em> ...<code>)</code></p>
+<i>Note:</i> The <code>hash-table-add!</code> and
+<code>hash-table-replace!</code> procedures should often be used in
+preference to this procedure, in order to more faithfully represent
+the expectation either that a new entry will be created for each
+<var>key</var>, or that each <var>key</var> will already have an extant
+entry. In cases where an ‘upsert’ operation is intended, the
+<code>hash-table-intern!</code> and <code>hash-table-update!</code>
+procedures are also often more expressive than the equivalent
+operation expressed directly in terms of <code>hash-table-set!</code>.
+
+<h4>
+  <code>(hash-table-delete! </code><var>hash-table</var> <var>key</var> ...<code>)</code>
+</h4>
 
 <p>
-Deletes any association to each <em>key</em> in <em>hash-table</em>
+Deletes any association to each <var>key</var> in <var>hash-table</var>
 and returns the number of keys that had associations.  Must execute
-in expected amortized constant time per key.  R6RS
-<code>hashtable-delete!</code> and Common Lisp <code>remhash</code>
-do not handle multiple associations.</p>
+in expected amortized constant time per key.
 
 <p>
-<code>(hash-table-intern! </code><em>hash-table key</em> <em>failure</em><code>)</code></p>
+If any of the <var>key</var>s do not satisfy the type test of the
+<var>hash-table</var>’s comparator, it is an assertion violation. It is
+unspecified whether any of the associations of the other <var>key</var>s
+will already have been deleted before the assertion violation is raised.
+
+<p>
+R6RS <code>hashtable-delete!</code> and Common Lisp
+<code>remhash</code> do not handle multiple associations.</p>
+
+<h4>
+  <code>(hash-table-intern! </code><var>hash-table</var> <var>key</var> <var>failure</var><code>)</code>
+</h4>
 
 <p>
 Effectively invokes <code>hash-table-ref</code> with the given
-arguments and returns what it returns.  If <em>key</em> was not
-found in <em>hash-table</em>, its value is set to the result of
-calling <em>failure</em>.  Must execute in expected amortized constant time.</p>
+arguments and returns what it returns. If <var>key</var> was not found
+in <var>hash-table</var>, its value is set to the result of calling
+<var>failure</var> and that value is returned. Must execute in expected
+amortized constant time.</p>
 
-<p>
-<code>(hash-table-update! </code><em>hash-table key updater</em> [ <em>failure</em> [ <em>success ] ]<code>)</code>
-</em></p>
+<h4>
+  <code>(hash-table-update! </code><var>hash-table</var> <var>key</var> <var>updater</var><code>)</code> <br>
+  <code>(hash-table-update! </code><var>hash-table</var> <var>key</var> <var>updater</var> <var>failure</var><code>)</code> <br>
+  <code>(hash-table-update! </code><var>hash-table</var> <var>key</var> <var>updater</var> <var>failure</var> <var>success</var><code>)</code>
+</h4>
 
 <p>
 Semantically equivalent to, but may be more efficient than, the following code:</p>
 <blockquote>
 
 <p>
-<code>(hash-table-set! </code><em>hash-table key</em><code> (</code><em>updater</em> <code>(hash-table-ref </code><em>hash-table key failure success</em><code>)))</code></p>
+<code>(hash-table-set! </code><var>hash-table</var> <var>key</var><code> (</code><var>updater</var> <code>(hash-table-ref </code><var>hash-table</var> <var>key</var> <var>failure</var> <var>success</var><code>)))</code></p>
 </blockquote>
 
 <p>
 Must execute in expected amortized constant time.  Returns an unspecified value.</p>
 
-<p>
-<code>(hash-table-update!/default </code><em>hash-table key updater default</em><code>)</code></p>
+<h4>
+  <code>(hash-table-update!/default </code><var>hash-table</var> <var>key</var> <var>updater</var> <var>default</var><code>)</code>
+</h4>
 
 <p>
 Semantically equivalent to, but may be more efficient than, the following code:</p>
 <blockquote>
 
 <p>
-<code>(hash-table-set! </code><em>hash-table key</em><code> (</code><em>updater</em> <code>(hash-table-ref/default </code><em>hash-table key default</em><code>)))</code></p>
+<code>(hash-table-set! </code><var>hash-table</var> <var>key</var><code> (</code><var>updater</var> <code>(hash-table-ref/default </code><var>hash-table</var> <var>key</var> <var>default</var><code>)))</code></p>
 (R6RS <code>hashtable-update!</code>)
 </blockquote>
 
 <p>
 Must execute in expected amortized constant time.  Returns an unspecified value.</p>
 
-<p>
-<code>(hash-table-pop! </code><em>hash-table</em><code>)</code></p>
+<h4>
+  <code>(hash-table-pop! </code><var>hash-table</var><code>)</code>
+</h4>
 
 <p>
 Chooses the last, most recently added association from
-<em>hash-table</em> and removes it, returning the key and value as two
+<var>hash-table</var> and removes it, returning the key and value as two
 values.</p>
 
 <p>
-It is an error if <em>hash-table</em> is empty.</p>
+It is an assertion violation if <var>hash-table</var> is empty.</p>
 
+<h4>
+  <code>(hash-table-clear! </code><var>hash-table</var><code>)</code>
+</h4>
 <p>
-<code>(hash-table-clear! </code><em>hash-table</em><code>)</code></p>
-
-<p>
-Delete all the associations from <em>hash-table</em>.
+Delete all the associations from <var>hash-table</var>.
 (R6RS <code>hashtable-clear!</code>; Common Lisp <code>clrhash</code>)</p>
 
 <h3 id="Thewholehashtable">The whole hash table</h3>
@@ -567,59 +722,33 @@ Delete all the associations from <em>hash-table</em>.
 These procedures process the associations of the hash table
 in insertion order.</p>
 
-<p>
-<code>(hash-table-size </code><em>hash-table</em><code>)</code></p>
+<h4>
+  <code>(hash-table-size </code><var>hash-table</var><code>)</code>
+</h4>
 
 <p>
-Returns the number of associations in <em>hash-table</em> as an
+Returns the number of associations in <var>hash-table</var> as an
 exact integer.  Must execute in constant time.
 (R6RS <code>hashtable-size</code>; Common Lisp <code>hash-table-count</code>.)</p>
 
-<p>
-<code>(hash-table-keys </code><em>hash-table</em><code>)</code>
-<br>
-<code>(hash-table-key-vector </code><em>hash-table</em><code>)</code>
+<h4>
+  <code>(hash-table-find </code><var>proc hash-table failure</var><code>)</code>
+</h4>
 
 <p>
-Returns a newly allocated list/vector of all the keys in <em>hash-table</em>.
-R6RS <code>hashtable-keys</code> returns a vector.</p>
+For each association of <var>hash-table</var>, invoke <var>proc</var>
+on its key and value.   If <var>proc</var> returns true, then
+<code>hash-table-find</code> returns what <var>proc</var> returns.
+If all the calls to <var>proc</var> return <code>#f</code>, return
+the result of invoking the thunk <var>failure</var>.</p>
+
+<h4>
+  <code>(hash-table-count </code><var>pred</var> <var>hash-table</var><code>)</code>
+</h4>
 
 <p>
-<code>(hash-table-values </code><em>hash-table</em><code>)</code>
-<br>
-<code>(hash-table-value-vector </code><em>hash-table</em><code>)</code>
-R6RS <code>hashtable-values</code> returns a vector.</p>
-
-<p>
-Returns a newly allocated list/vector of all the keys in <em>hash-table</em>.</p>
-
-<p>
-<code>(hash-table-entries </code><em>hash-table</em><code>)</code>
-<br>
-<code>(hash-table-entry-vectors </code><em>hash-table</em><code>)</code></p>
-
-<p>
-Returns two values, a newly allocated list/vector of all the keys in
-<em>hash-table</em> and a newly allocated list/vector of all the values
-in <em>hash-table</em> in the corresponding order.  R6RS
-<code>hash-table-entries</code> returns vectors.</p>
-
-<p>
-<code>(hash-table-find </code><em>proc hash-table failure</em><code>)</code></p>
-
-<p>
-For each association of <em>hash-table</em>, invoke <em>proc</em>
-on its key and value.   If <em>proc</em> returns true, then
-<code>hash-table-find</code> returns what <em>proc</em> returns.
-If all the calls to <em>proc</em> return <code>#f</code>, return
-the result of invoking the thunk <em>failure</em>.</p>
-
-<p>
-<code>(hash-table-count </code><em>pred hash-table</em><code>)</code></p>
-
-<p>
-For each association of <em>hash-table</em>, invoke <em>pred</em>
-on its key and value.  Return the number of calls to <em>pred</em>
+For each association of <var>hash-table</var>, invoke <var>pred</var>
+on its key and value.  Return the number of calls to <var>pred</var>
 which returned true.</p>
 
 <h3 id="Lowleveliteration">Low-level iteration</h3>
@@ -644,7 +773,7 @@ limits on its spatial and temporal validity:
         created.
 <li>Temporal limitation: a hash table cursor object can only be used
         as long as no associations in the hash table have been created,
-        deleted, or move since the operation which returned that cursor
+        deleted, or moved since the operation which returned that cursor
         object.
 </ul>
 
@@ -652,75 +781,79 @@ limits on its spatial and temporal validity:
 It is undefined behaviour to use a hash table cursor in any way which
 violates these limitations.
 
-<p>
-<code>(hash-table-cursor-first </code><em>hash-table</em><code>)</code>
+<h4>
+<code>(hash-table-cursor-first </code><var>hash-table</var><code>)</code>
 <br>
-<code>(hash-table-cursor-last </code><em>hash-table</em><code>)</code>
-</p>
+<code>(hash-table-cursor-last </code><var>hash-table</var><code>)</code>
+</h4>
 
 <p>
 Return a hash table cursor pointing, respectively, at the first or
-last association in the given <em>hash-table</em>.
+last association in the given <var>hash-table</var>.
 
-<p>
-<code>(hash-table-cursor-next </code><em>hash-table cursor</em><code>)</code>
-</p>
-
-<p>
-Returns a hash table cursor pointing to the association in the given
-<em>hash-table</em> which comes immediately after the association
-referred to by the input <em>cursor</em>.
-
-<p>
-If the given <em>cursor</em> refers to the last association in the
-hash table, the returned hash table cursor is in the end state.
-
-<p>
-If the given <em>cursor</em> is already in the end state, it is
-undefined behaviour.
-
-<p>
-<code>(hash-table-cursor-previous </code><em>hash-table cursor</em><code>)</code>
-</p>
+<h4>
+<code>(hash-table-cursor-next </code><var>hash-table</var> <var>cursor</var><code>)</code>
+</h4>
 
 <p>
 Returns a hash table cursor pointing to the association in the given
-<em>hash-table</em> which comes immediately before the association
-referred to by the input <em>cursor</em>.
+<var>hash-table</var> which comes immediately after the association
+referred to by the input <var>cursor</var>.
 
 <p>
-If the given <em>cursor</em> refers to the first association in the
+If the given <var>cursor</var> refers to the last association in the
 hash table, the returned hash table cursor is in the end state.
 
 <p>
-If the given <em>cursor</em> is already in the end state, it is
+If the given <var>cursor</var> is already in the end state, it is
 undefined behaviour.
 
+<h4>
+<code>(hash-table-cursor-previous </code><var>hash-table</var> <var>cursor</var><code>)</code>
+</h4>
+
 <p>
-<code>(hash-table-cursor-key </code><em>hash-table cursor</em><code>)</code>
+Returns a hash table cursor pointing to the association in the given
+<var>hash-table</var> which comes immediately before the association
+referred to by the input <var>cursor</var>.
+
+<p>
+If the given <var>cursor</var> refers to the first association in the
+hash table, the returned hash table cursor is in the end state.
+
+<p>
+If the given <var>cursor</var> is already in the end state, it is
+undefined behaviour.
+
+<h4>
+<code>(hash-table-cursor-key </code><var>hash-table</var> <var>cursor</var><code>)</code>
 <br>
-<code>(hash-table-cursor-value </code><em>hash-table cursor</em><code>)</code>
-</p>
+<code>(hash-table-cursor-value </code><var>hash-table</var> <var>cursor</var><code>)</code>
+</h4>
 
 <p>
 Return, respectively, the key or value of the association in the
-<em>hash-table</em> to which the given <em>cursor</em> refers.
+<var>hash-table</var> to which the given <var>cursor</var> refers.
 
 <p>
-If the given <em>cursor</em> is in the end state, it is undefined
+If the given <var>cursor</var> is in the end state, it is undefined
 behaviour.
 
-<p>
-<code>(hash-table-cursor-key+value </code><em>hash-table cursor</em><code>)</code>
-</p>
+<h4>
+<code>(hash-table-cursor-key+value </code><var>hash-table</var> <var>cursor</var><code>)</code>
+</h4>
 
 <p>
 Returns two values: the key and value of the association in the
-<em>hash-table</em> to which the given <em>cursor</em> refers.
+<var>hash-table</var> to which the given <var>cursor</var> refers.
 
 <p>
-<code>(hash-table-cursor-at-end? </code><em>hash-table cursor</em><code>)</code>
-</p>
+If the given <var>cursor</var> is already in the end state, it is
+undefined behaviour.
+
+<h4>
+<code>(hash-table-cursor-at-end? </code><var>hash-table</var> <var>cursor</var><code>)</code>
+</h4>
 
 <p>
 Returns <code>#t</code> if the given <code>cursor</code> is in the end
@@ -732,173 +865,183 @@ state in the given <code>hash-table</code>, and <code>#f</code> otherwise.
 These procedures process the associations of the hash table in
 insertion order.</p>
 
-<p>
-<code>(hash-table-map </code><em>proc hash-table</em><code>)</code></p>
+<h4>
+  <code>(hash-table-map </code><var>proc</var> <var>hash-table</var><code>)</code>
+</h4>
 
 <p>
 Returns a newly allocated hash table as if by
-<code>(hash-table-empty-copy </code><em>hash-table</em><code>)</code>.
-Calls <em>proc</em> for every association in <em>hash-table</em>
+<code>(hash-table-empty-copy </code><var>hash-table</var><code>)</code>.
+Calls <var>proc</var> for every association in <var>hash-table</var>
 with the key and value of the association.  The key of the association
-and the result of invoking <em>proc</em> are entered into the
+and the result of invoking <var>proc</var> are entered into the
 new hash table.  Note that this is <em>not</em> the result of
 lifting mapping over the domain of hash tables, but it is
 considered more useful.</p>
 
-<p>If <em>comparator</em> recognizes multiple keys in the <em>hash-table</em>
+<p>If <var>comparator</var> recognizes multiple keys in the <var>hash-table</var>
 as equivalent, any one of such associations is taken.</p>
 
-<p>
-<code>(hash-table-for-each </code><em>proc hash-table</em><code>)</code></p>
+<h4>
+  <code>(hash-table-for-each </code><var>proc</var> <var>hash-table</var><code>)</code>
+</h4>
 
 <p>
-Calls <em>proc</em> for every association in <em>hash-table</em>
+Calls <var>proc</var> for every association in <var>hash-table</var>
 with two arguments: the key of the association and the value of
-the association.  The value returned by <em>proc</em> is discarded.
+the association.  The value returned by <var>proc</var> is discarded.
 Returns an unspecified value.</p>
 
-<p>
-<code>(hash-table-map! </code><em>proc hash-table</em><code>)</code></p>
+<h4>
+  <code>(hash-table-map! </code><var>proc</var> <var>hash-table</var><code>)</code>
+</h4>
 
 <p>
-Calls <em>proc</em> for every association in <em>hash-table</em>
+Calls <var>proc</var> for every association in <var>hash-table</var>
 with two arguments: the key of the association and the value of
-the association.  The value returned by <em>proc</em> is used to
+the association.  The value returned by <var>proc</var> is used to
 update the value of the association.   Returns an unspecified value.</p>
 
-<p>
-<code>(hash-table-map-&gt;list </code><em>proc hash-table</em><code>)</code></p>
+<h4>
+  <code>(hash-table-map-&gt;list </code><var>proc</var> <var>hash-table</var><code>)</code>
+</h4>
 
 <p>
-Calls <em>proc</em> for every association in <em>hash-table</em>
+Calls <var>proc</var> for every association in <var>hash-table</var>
 with two arguments: the key of the association and the value of
 the association.  The values returned by the invocations of
-<em>proc</em> are accumulated into a list, which is returned.</p>
+<var>proc</var> are accumulated into a list, which is returned.</p>
+
+<h4>
+  <code>(hash-table-fold </code><var>proc</var> <var>seed</var> <var>hash-table</var><code>)</code>
+</h4>
 
 <p>
-<code>(hash-table-fold </code><em>proc seed hash-table</em><code>)</code></p>
-
-<p>
-Calls <em>proc</em> for every association in <em>hash-table</em>
+Calls <var>proc</var> for every association in <var>hash-table</var>
 with three arguments: the key of the association, the value of
-the association, and an accumulated value <em>val</em>.
-<em>Val</em> is <em>seed</em> for the first invocation of
-<em>procedure</em>, and for subsequent invocations of <em>proc</em>,
+the association, and an accumulated value <var>val</var>.
+<var>Val</var> is <var>seed</var> for the first invocation of
+<var>procedure</var>, and for subsequent invocations of <var>proc</var>,
 the returned value of the previous invocation.  The value returned
 by <code>hash-table-fold</code> is the return value of the last
-invocation of <em>proc</em>.</p>
+invocation of <var>proc</var>.</p>
 
 <p>
-The <em>proc</em> is invoked for the associations in an unspecified
+The <var>proc</var> is invoked for the associations in an unspecified
 order. To fold over the associations in order, see the next entries.
 
 <p>
 <i>Rationale:</i> An implementation may be able to provide more
 efficient iteration in an unspecified order than in insertion order
-when the order is not significant for the <em>proc</em>.
+when the order is not significant for the <var>proc</var>.
+
+<h4>
+<code>(hash-table-fold-left </code><var>proc</var> <var>seed</var> <var>hash-table</var><code>)</code>
+</h4>
 
 <p>
-<code>(hash-table-fold-left </code><em>proc seed hash-table</em><code>)</code>
-</p>
-
-<p>
-Calls <em>proc</em> for every association in <em>hash-table</em>, in
+Calls <var>proc</var> for every association in <var>hash-table</var>, in
 order from oldest to newest, with three arguments: an accumulated
-value <em>val</em>, the key of the association, and the value of the
-association. <em>Val</em> is <em>seed</em> for the first invocation of
-<em>procedure</em>, and for subsequent invocations of <em>proc</em>,
+value <var>val</var>, the key of the association, and the value of the
+association. <var>Val</var> is <var>seed</var> for the first invocation of
+<var>procedure</var>, and for subsequent invocations of <var>proc</var>,
 the returned value of the previous invocation. The value returned by
 <code>hash-table-fold</code> is the return value of the last
-invocation of <em>proc</em>.</p>
+invocation of <var>proc</var>.</p>
+
+<h4>
+<code>(hash-table-fold-right </code><var>proc</var> <var>seed</var> <var>hash-table</var><code>)</code>
+</h4>
 
 <p>
-<code>(hash-table-fold-right </code><em>proc seed hash-table</em><code>)</code>
-</p>
-
-<p>
-Calls <em>proc</em> for every association in <em>hash-table</em>, in
+Calls <var>proc</var> for every association in <var>hash-table</var>, in
 order from oldest to newest, with three arguments: the key of the
 association, the value of the association, and an accumulated value
-<em>val</em>. <em>Val</em> is <em>seed</em> for the first invocation
-of <em>procedure</em>, and for subsequent invocations of
-<em>proc</em>, the returned value of the previous invocation. The
+<var>val</var>. <var>Val</var> is <var>seed</var> for the first invocation
+of <var>procedure</var>, and for subsequent invocations of
+<var>proc</var>, the returned value of the previous invocation. The
 value returned by <code>hash-table-fold</code> is the return value of
-the last invocation of <em>proc</em>.</p>
+the last invocation of <var>proc</var>.</p>
+
+<h4>
+  <code>(hash-table-prune! </code><var>proc</var> <var>hash-table</var><code>)</code>
+</h4>
 
 <p>
-<code>(hash-table-prune! </code><em>proc hash-table</em><code>)</code></p>
-
-<p>
-Calls <em>proc</em> for every association in <em>hash-table</em>
+Calls <var>proc</var> for every association in <var>hash-table</var>
 with two arguments, the key and the value of the association, and
-removes all associations from <em>hash-table</em> for which
-<em>proc</em> returns true.  Returns the number of associations that were removed.</p>
+removes all associations from <var>hash-table</var> for which
+<var>proc</var> returns true.  Returns the number of associations that were removed.</p>
 
 <h3 id="Copyingandconversion">Copying and conversion</h3>
 
-<p>
-<code>(hash-table-copy </code><em>hash-table</em> [ <em>mutable?</em> ]<code>)</code></p>
+<h4>
+  <code>(hash-table-copy </code><var>hash-table</var><code>)</code> <br>
+  <code>(hash-table-copy </code><var>hash-table</var> <var>mutable?</var><code>)</code>
+</h4>
 
 <p>
 Returns a newly allocated hash table with the same properties
-and associations as <em>hash-table</em>. If the second argument
+and associations as <var>hash-table</var>. If the second argument
 is present and is true, the new hash table is mutable.  Otherwise
 it is immutable provided that the implementation supports immutable
 hash tables.  (R6RS <code>hashtable-copy</code>)</p>
 
-<p>
-<code>(hash-table-empty-copy </code><em>hash-table</em><code>)</code></p>
+<h4>
+  <code>(hash-table-empty-copy </code><var>hash-table</var><code>)</code>
+</h4>
 
 <p>
 Returns a newly allocated mutable hash table with the same comparator
-as <em>hash-table</em>, but with no associations. The implementation
+as <var>hash-table</var>, but with no associations. The implementation
 may assume that the returned hash table will eventually contain as
-many associations as does the original <em>hash-table</em>.</p>
+many associations as does the original <var>hash-table</var>.</p>
+
+<h4>
+  <code>(hash-table-&gt;alist </code><var>hash-table</var><code>)</code>
+</h4>
 
 <p>
-<code>(hash-table-&gt;alist </code><em>hash-table</em><code>)</code></p>
-
-<p>
-Returns an alist with the same associations as <em>hash-table</em>
+Returns an alist with the same associations as <var>hash-table</var>
 in reverse insertion order.</p>
 
 <h3 id="Hashtablesassets">Hash tables as sets</h3>
 
-<p>
-<code>(hash-table-union! </code><em>hash-table<sub>1</sub> hash-table<sub>2</sub></em><code>)</code></p>
+<h4>
+<code>(hash-table-union! </code><var>hash-table</var><sub>1</sub> <var>hash-table</var><sub>2</sub><code>)</code></h4>
 
 <p>
-Adds the associations of <em>hash-table<sub>2</sub></em> to
-<em>hash-table<sub>1</sub></em> and returns <em>hash-table<sub>1</sub></em>.
+Adds the associations of <var>hash-table</var><sub>2</sub> to
+<var>hash-table</var><sub>1</sub> and returns <var>hash-table<sub>1</sub></var>.
 If a key appears in both hash tables, its value is set to the value
-appearing in <em>hash-table<sub>1</sub></em>.  Returns
-<em>hash-table<sub>1</sub></em>.</p>
+appearing in <var>hash-table</var><sub>1</sub>.  Returns
+<var>hash-table</var><sub>1</sub>.</p>
+
+<h4>
+<code>(hash-table-intersection! </code><var>hash-table</var><sub>1</sub> <var>hash-table</var><sub>2</sub><code>)</code></h4>
 
 <p>
-<code>(hash-table-intersection! </code><em>hash-table<sub>1</sub> hash-table<sub>2</sub></em><code>)</code></p>
+Deletes the associations from <var>hash-table</var><sub>1</sub>
+whose keys don't also appear in <var>hash-table</var><sub>2</sub> and
+returns <var>hash-table<sub>1</sub></var>.</p>
+
+<h4>
+<code>(hash-table-difference! </code><var>hash-table</var><sub>1</sub> <var>hash-table</var><sub>2</sub><code>)</code></h4>
 
 <p>
-Deletes the associations from <em>hash-table<sub>1</sub></em>
-whose keys don't also appear in <em>hash-table<sub>2</sub></em> and
-returns <em>hash-table<sub>1</sub></em>.</p>
+Deletes the associations of <var>hash-table</var><sub>1</sub> whose
+keys are also present in <var>hash-table</var><sub>2</sub> and returns
+<var>hash-table</var><sub>1</sub>.</p>
+
+<h4>
+<code>(hash-table-xor! </code><var>hash-table</var><sub>1</sub> <var>hash-table</var><sub>2</sub><code>)</code></h4>
 
 <p>
-<code>(hash-table-difference! </code><em>hash-table<sub>1</sub> hash-table<sub>2</sub></em><code>)</code></p>
-
-<p>
-Deletes the associations of <em>hash-table<sub>1</sub></em> whose
-keys are also present in <em>hash-table<sub>2</sub></em> and returns
-<em>hash-table<sub>1</sub></em>.</p>
-
-<p>
-<code>(hash-table-xor! </code><em>hash-table<sub>1</sub> hash-table<sub>2</sub></em><code>)</code></p>
-
-<p>
-Deletes the associations of <em>hash-table<sub>1</sub></em> whose
-keys are also present in <em>hash-table<sub>2</sub></em>, and then
-adds the associations of <em>hash-table<sub>2</sub></em> whose keys
-are not present in <em>hash-table<sub>1</sub></em> to
-<em>hash-table<sub>1</sub></em>.  Returns <em>hash-table<sub>1</sub></em>.</p>
+Deletes the associations of <var>hash-table</var><sub>1</sub> whose
+keys are also present in <var>hash-table</var><sub>2</sub>, and then
+adds the associations of <var>hash-table</var><sub>2</sub> whose keys
+are not present in <var>hash-table</var><sub>1</sub> to
+<var>hash-table</var><sub>1</sub>. Returns <var>hash-table</var><sub>1</sub>.</p>
 
 <h2 id="implementation">Implementation</h2>
 
