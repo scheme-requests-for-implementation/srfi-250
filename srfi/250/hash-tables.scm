@@ -74,7 +74,8 @@
                          0
                          (make-compact-array (find-nice-n-buckets k))
                          (make-vector k* *unfilled*)
-                         (make-vector k* *unfilled*))))))
+                         (make-vector k* *unfilled*)
+                         #t)))))
 
 ;; construct and pre-fill
 (define (prefilled-hash-table comparator . keys-values)
@@ -100,6 +101,9 @@
                  (reverse alist))
        ht))))
 
+(define (hash-table-empty-copy ht)
+  (make-hash-table (hash-table-comparator ht)
+                   (hash-table-size ht)))
 
 ;; internal helpers
 (define (hash-table-hash ht key)
@@ -248,9 +252,81 @@
   (hash-table-next-entry-set! ht (+ (hash-table-next-entry ht) 1)))
 
 ;; basic public interface, getting and setting
+(define hash-table-add!
+  (case-lambda
+    ((ht key value)
+     (unless (hash-table-mutable? ht)
+       (assertion-violation 'hash-table-add!
+                            "hash table is immutable"
+                            ht))
+     (unless (hash-table-right-type? ht key)
+       (assertion-violation 'hash-table-add!
+                            "not the right type for a key in this hash table"
+                            key ht))
+     (let* ((bucket (hash-table-bucket-for-key ht key))
+            (entry-idx (compact-array-ref (hash-table-compact-index ht)
+                                          bucket)))
+       (if entry-idx
+           (assertion-violation 'hash-table-add!
+                                "already an association for this key in this hash table"
+                                key ht)
+           (hash-table-add-entry! ht bucket key value))))
+    ((ht) (void))
+    ((ht . keys-values)
+     (unless (even? (length keys-values))
+       (assertion-violation 'hash-table-add!
+                            "there must be as many keys as values"
+                            (length keys-values) keys-values))
+     (let loop ((key (car keys-values))
+                (value (cadr keys-values))
+                (more-keys-values (cddr keys-values)))
+       (hash-table-add! ht key value)
+       (unless (null? more-keys-values)
+         (loop (car more-keys-values)
+               (cadr more-keys-values)
+               (cddr more-keys-values)))))))
+
+(define hash-table-replace!
+  (case-lambda
+    ((ht key value)
+     (unless (hash-table-mutable? ht)
+       (assertion-violation 'hash-table-replace!
+                            "hash table is immutable"
+                            ht))
+     (unless (hash-table-right-type? ht key)
+       (assertion-violation 'hash-table-replace!
+                            "not the right type for a key in this hash table"
+                            key ht))
+     (let* ((bucket (hash-table-bucket-for-key ht key))
+            (entry-idx (compact-array-ref (hash-table-compact-index ht)
+                                          bucket)))
+       (if entry-idx
+           (vector-set! (hash-table-values-vector ht) entry-idx value)
+           (assertion-violation 'hash-table-replace!
+                                "key not in table"
+                                key ht))))
+    ((ht) (void))
+    ((ht . keys-values)
+     (unless (even? (length keys-values))
+       (assertion-violation 'hash-table-replace!
+                            "there must be as many keys as values"
+                            (length keys-values) keys-values))
+     (let loop ((key (car keys-values))
+                (value (cadr keys-values))
+                (more-keys-values (cddr keys-values)))
+       (hash-table-replace! ht key value)
+       (unless (null? more-keys-values)
+         (loop (car more-keys-values)
+               (cadr more-keys-values)
+               (cddr more-keys-values)))))))
+
 (define hash-table-set!
   (case-lambda
     ((ht key value)
+     (unless (hash-table-mutable? ht)
+       (assertion-violation 'hash-table-set!
+                            "hash table is immutable"
+                            ht))
      (unless (hash-table-right-type? ht key)
        (assertion-violation 'hash-table-set!
                             "not the right type for a key in this hash table"
@@ -302,6 +378,10 @@
   (hash-table-ref ht key (lambda () default)))
 
 (define (hash-table-delete! ht . keys)
+  (unless (hash-table-mutable? ht)
+    (assertion-violation 'hash-table-delete!
+                         "hash table is immutable"
+                         ht))
   (let loop ((n-deleted 0)
              (more-keys keys))
     (if (null? more-keys)
@@ -334,17 +414,32 @@
           #t)
         #f)))
 
-#;(define (hash-table-pop! ht)
+(define (hash-table-pop! ht)
+  (unless (hash-table-mutable? ht)
+    (assertion-violation 'hash-table-delete!
+                         "hash table is immutable"
+                         ht))
   (when (hash-table-empty? ht)
     (assertion-violation 'hash-table-pop!
                          "hash table is already empty"
                          ht))
-  (let ((idx (- 1 (hash-table-next-entry ht))))))
+  (let* ((idx (- (hash-table-next-entry ht) 1))
+         (key (vector-ref (hash-table-keys-vector ht) idx))
+         (value (vector-ref (hash-table-values-vector ht) idx)))
+    (vector-set! (hash-table-keys-vector ht) idx *unfilled*)
+    (vector-set! (hash-table-values-vector ht) idx *unfilled*)
+    (hash-table-size-set! ht (- (hash-table-size ht) 1))
+    (hash-table-next-entry-set! ht idx)
+    (values key value)))
 
 (define (hash-table-clear! ht)
+  (unless (hash-table-mutable? ht)
+    (assertion-violation 'hash-table-clear!
+                         "hash table is immutable"
+                         ht))
   ;; assumes the hash table is going to be refilled with approximately
   ;; the same number of associations as were previously in it
-  (compact-index-clear! (hash-table-compact-index ht))
+  (compact-array-clear! (hash-table-compact-index ht))
   (vector-fill! (hash-table-keys-vector ht) *unfilled*)
   (vector-fill! (hash-table-values-vector ht) *unfilled*)
   (hash-table-size-set! ht 0)
@@ -361,6 +456,11 @@
     (not (not entry-idx))))
 
 (define (hash-table-empty? ht) (zero? (hash-table-size ht)))
+(define (hash-table-comparator ht)
+  (make-comparator (hash-table-type-test-function ht)
+                   (hash-table-same?-function ht)
+                   #f
+                   (hash-table-hash-function ht)))
 
 ;; cursor-based iteration
 (define (hash-table-cursor-first ht)
@@ -370,7 +470,7 @@
 
 (define (hash-table-cursor-for-key ht key)
   (unless (hash-table-right-type? ht key)
-    (assertion-violation 'hash-table-ref
+    (assertion-violation 'hash-table-cursor-for-key
                          "not the right type for a key in this hash table"
                          key ht))
   (let* ((bucket (hash-table-bucket-for-key ht key))
@@ -404,6 +504,9 @@
 (define (hash-table-cursor-key+value ht cur)
   (values (hash-table-cursor-key ht cur)
           (hash-table-cursor-value ht cur)))
+
+(define (hash-table-cursor-value-set! ht cur val)
+  (vector-set! (hash-table-values-vector ht) cur val))
 
 (define (hash-table-cursor-at-end? ht cur)
   (or (negative? cur)
@@ -456,6 +559,10 @@
     new-ht))
 
 (define (hash-table-map! proc ht)
+  (unless (hash-table-mutable? ht)
+    (assertion-violation 'hash-table-map!
+                         "hash table is immutable"
+                         ht))
   (let loop ((cur (hash-table-cursor-first ht)))
     (if (hash-table-cursor-at-end? ht cur)
         ht
@@ -466,8 +573,14 @@
           (hash-table-cursor-value-set! ht cur new-val)
           (loop (hash-table-cursor-next ht cur))))))
 
-(define (hash-table->alist ht)
+(define (hash-table-map->list proc ht)
   (hash-table-fold-right
+   (lambda (k v l)
+     (cons (proc k v) l))
+   '() ht))
+
+(define (hash-table->alist ht)
+  (hash-table-fold-left
    (lambda (l k v)
      (cons (cons k v) l))
    '() ht))
@@ -483,7 +596,7 @@
 
 (define (hash-table-count pred ht)
   (hash-table-fold
-   (lambda (acc k v)
+   (lambda (k v acc)
      (if (pred k v)
          (+ acc 1)
          acc))
@@ -491,6 +604,10 @@
    ht))
 
 (define (hash-table-prune! proc ht)
+  (unless (hash-table-mutable? ht)
+    (assertion-violation 'hash-table-prune!
+                         "hash table is immutable"
+                         ht))
   (let loop ((cur (hash-table-cursor-first ht)) (n-deleted 0))
     (if (hash-table-cursor-at-end? ht cur)
         (begin
@@ -505,6 +622,25 @@
                    (hash-table-delete-one! ht k))
               (loop (hash-table-cursor-next ht cur) (+ n-deleted 1))
               (loop (hash-table-cursor-next ht cur) n-deleted))))))
+
+(define (hash-table-copy ht mutable?)
+  (hash-table-prune-dead-entries! ht #f)
+  (if mutable?
+      (%make-hash-table (hash-table-type-test-function ht)
+                        (hash-table-hash-function ht)
+                        (hash-table-same?-function ht)
+                        (hash-table-size ht)
+                        (hash-table-next-entry ht)
+                        (compact-array-copy (hash-table-compact-index ht))
+                        (vector-copy (hash-table-keys-vector ht))
+                        (vector-copy (hash-table-values-vector ht))
+                        #t)
+      (let ((out-ht (hash-table-empty-copy ht)))
+        (hash-table-for-each (lambda (k v)
+                               (hash-table-add! out-ht k v))
+                             ht)
+        (hash-table-immutablize! out-ht)
+        out-ht)))
 
 ;; set-like operations
 (define (hash-table-union! ht_1 ht_2)
@@ -584,6 +720,10 @@
                  (loop (successor seed))))))))))
 
 (define (hash-table-intern! ht key failure)
+  (unless (hash-table-mutable? ht)
+    (assertion-violation 'hash-table-intern!
+                         "hash table is immutable"
+                         ht))
   (if (hash-table-contains? ht key)
       (hash-table-ref ht key)
       (let ((val (failure)))
@@ -591,9 +731,17 @@
         val)))
 
 (define (hash-table-update! ht key updater . rest)
+  (unless (hash-table-mutable? ht)
+    (assertion-violation 'hash-table-update!
+                         "hash table is immutable"
+                         ht))
   (hash-table-set! ht
                    key
                    (updater (apply hash-table-ref ht key rest))))
 
 (define (hash-table-update!/default ht key updater default)
+  (unless (hash-table-mutable? ht)
+    (assertion-violation 'hash-table-update!/default
+                         "hash table is immutable"
+                         ht))
   (hash-table-set! ht key (updater (hash-table-ref/default ht key default))))

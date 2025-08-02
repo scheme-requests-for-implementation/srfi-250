@@ -315,6 +315,15 @@ The procedures in this SRFI are in the <code>(srfi 250)</code> library
 (or <code>(srfi :250 hash-tables)</code> on R6RS).</p>
 
 <p>
+Hash tables may be mutable or immutable. All hash tables created by
+the procedures in this SRFI are mutable by default, except hash tables
+created by the <code>hash-table-copy</code> procedure with the
+<var>mutable?</code> argument set of <code>#f</code>. It is an
+assertion violation to attempt to mutate an immutable hash table,
+whether by adding new associations, deleting associations, or
+changing the value of any association.
+
+<p>
 All references to ‘executing in expected amortized constant time’
 presuppose that a satisfactory hash function is available. <span
 title="dpk disclaims all responsibility for this joke">Arbitrary or
@@ -375,7 +384,6 @@ the table will return a different result when applied to that key.</p>
     <code>hash-table?</code>,
     <code>hash-table-contains?</code>,
     <code>hash-table-empty?</code>,
-    <code>hash-table=</code>,
     <code>hash-table-mutable?</code>
   </li>
   <li><a class="wiki" href="#Accessors">Accessors</a>:
@@ -396,6 +404,7 @@ the table will return a different result when applied to that key.</p>
   </li>
   <li><a class="wiki" href="#Thewholehashtable">The whole hash table</a>:
     <code>hash-table-size</code>,
+    <code>hash-table=</code>,
     <code>hash-table-find</code>,
     <code>hash-table-count</code>
   </li>
@@ -490,11 +499,11 @@ as its value.
 <p><i>Example:</i>
 
 <pre><code>(define suits-table
-  (make-hash-table (make-comparator symbol? symbol=? #f symbol-hash)
-                   'clubs #\x2663
-                   'diamonds #\x2666
-                   'hearts #\x2665
-                   'spades #\x2660))
+  (hash-table (make-comparator symbol? symbol=? #f symbol-hash)
+              'clubs #\x2663
+              'diamonds #\x2666
+              'hearts #\x2665
+              'spades #\x2660))
 ;; suits-table => #&lt;a hash table with four associations,
 ;;                  mapping the names of the suits of cards
 ;;                  as symbols to the Unicode codepoints of
@@ -534,7 +543,7 @@ This procedure may not be continuation-safe.
                      (lambda (c) (integer->char (+ 1 (char->integer c))))
                      #\a
                      char-comparator
-                     26)
+                     26))
 ;; alphabet-table => #&lt;a hash table mapping the 26 lowercase
                       Basic Latin letters to their uppercase
                       counterparts>
@@ -565,13 +574,13 @@ later.</p>
 <p><i>Example:</i>
 
 <pre><code>(define telephone-numbers-table
-  (alist->hash-table (make-comparator exact-integer? = #f number-hash)
-                     '((116123 . emotional-support)
+  (alist->hash-table '((116123 . emotional-support)
                        (116117 . medical-advice)
                        (112 . emergency)
                        (112 . ambulance)
                        (112 . fire)
-                       (110 . police))))
+                       (110 . police))
+                     (make-comparator exact-integer? = #f number-hash)))
 ;; telephone-numbers-table => #&lt;a hash table mapping some
                                 useful German telephone numbers
                                 in ascending order; 112 is mapped
@@ -622,33 +631,6 @@ and <code>#f</code> otherwise.</p>
 
 <pre><code>(hash-table-empty? tiny-table)  ;=> #t
 (hash-table-empty? suits-table) ;=> #f</code></pre>
-
-<h4>
-  <code>(hash-table= </code><var>same?</var> <var>hash-table</var><sub>1</sub> <var>hash-table</var><sub>2</sub><code>)</code>
-</h4>
-
-<p>
-Returns <code>#t</code> if <var>hash-table</var><sub>1</sub> and
-<var>hash-table</var><sub>2</sub> have the same keys (in the sense
-of their common equality predicate) and each key has the same
-value (in the sense of the <var>same?</var> procedure), and
-<code>#f</code> otherwise.</p>
-
-<p>
-It is an assertion violation if the equality predicates of
-<var>hash-table</var><sub>1</sub> and <var>hash-table</var><sub>2</sub>
-are not the same in the sense of the <code>eqv?</code> procedure. On
-R6RS implementations where <code>eqv?</code> is not usefully defined
-on procedures by the implementation, this assertion violation is not
-required to be raised.
-
-<p><i>Examples:</i>
-
-<pre><code>(define alphabet-table*
-  (hash-table-map (lambda (k v) (char-downcase v)) alphabet-table))
-
-(hash-table= char-ci=? alphabet-table alphabet-table*) ;=> #t
-(hash-table= char=? alphabet-table alphabet-table*)    ;=> #f</code></pre>
 
 <h4>
   <code>(hash-table-mutable? </code><var>hash-table</var><code>)</code>
@@ -922,8 +904,8 @@ Must execute in expected amortized constant time.
 <pre><code>(hash-table-update! tiny-table
                     12
                     (lambda (x) (+ x 1))
-                    values
-                    (lambda () (hash-table-size tiny-table)))
+                    (lambda () (hash-table-size tiny-table))
+                    values)
                ; tiny-table now associates the key 12 with 1</code></pre>
 
 <h4>
@@ -1006,6 +988,34 @@ exact integer.  Must execute in constant time.
 (hash-table-size suits-table)    ;=> 4
 (hash-table-size alphabet-table) ;=> 26</code></pre>
 
+
+<h4>
+  <code>(hash-table= </code><var>same?</var> <var>hash-table</var><sub>1</sub> <var>hash-table</var><sub>2</sub><code>)</code>
+</h4>
+
+<p>
+Returns <code>#t</code> if <var>hash-table</var><sub>1</sub> and
+<var>hash-table</var><sub>2</sub> have the same keys (in the sense
+of their common equality predicate) and each key has the same
+value (in the sense of the <var>same?</var> procedure), and
+<code>#f</code> otherwise.</p>
+
+<p>
+It is an assertion violation if the equality predicates of
+<var>hash-table</var><sub>1</sub> and <var>hash-table</var><sub>2</sub>
+are not the same in the sense of the <code>eqv?</code> procedure. On
+R6RS implementations where <code>eqv?</code> is not usefully defined
+on procedures by the implementation, this assertion violation is not
+required to be raised.
+
+<p><i>Examples:</i>
+
+<pre><code>(define alphabet-table*
+  (hash-table-map (lambda (k v) (char-downcase v)) alphabet-table))
+
+(hash-table= char-ci=? alphabet-table alphabet-table*) ;=> #t
+(hash-table= char=? alphabet-table alphabet-table*)    ;=> #f</code></pre>
+
 <h4>
   <code>(hash-table-find </code><var>proc hash-table failure</var><code>)</code>
 </h4>
@@ -1022,14 +1032,14 @@ the result of invoking the thunk <var>failure</var>.</p>
 <pre><code>(hash-table-find (lambda (number service)
                    (and (eq? service 'police)
                         number))
-                 telephone-number-table
+                 telephone-numbers-table
                  (lambda () 1312))
                ;=> 110
 
 (hash-table-find (lambda (number service)
                    (and (eq? service 'private-detective)
                         number))
-                 telephone-number-table
+                 telephone-numbers-table
                  (lambda () 'no-such-service))
                ;=> no-such-service</code></pre>
 
@@ -1045,7 +1055,7 @@ which returned true.</p>
 <p><i>Example:</i>
 
 <pre><code>(hash-table-count (lambda (number service) (even? number))
-                  telephone-number-table)
+                  telephone-numbers-table)
                ;=> 2</code></pre>
 
 <h3 id="Lowleveliteration">Low-level iteration</h3>
@@ -1209,10 +1219,9 @@ Replaces the value of the association in the <var>hash-table</var> to
 which the given <var>cursor</var> refers with <var>value</var>. Must
 execute in expected amortized constant time.
 
-
 <p>
-If the given <var>cursor</var> is in the end state, it is
-undefined behaviour.
+If the given <var>cursor</var> is in the end state or if
+<var>hash-table</var> is immutable, it is undefined behaviour.
 
 <h4>
 <code>(hash-table-cursor-at-end? </code><var>hash-table</var> <var>cursor</var><code>)</code>
@@ -1392,8 +1401,8 @@ removes all associations from <var>hash-table</var> for which
 <p><i>Example:</i>
 
 <pre><code>(hash-table-prune! (lambda (k v) (even? k))
-                   telephone-number-table)
-               ;=> 2, and telephone-number-table now contains only
+                   telephone-numbers-table)
+               ;=> 2, and telephone-numbers-table now contains only
                    associations for 116117 and 116123</code></pre>
 
 <h3 id="Copyingandconversion">Copying and conversion</h3>
@@ -1443,7 +1452,7 @@ in reverse insertion order.</p>
 
 <p><i>Example:</i>
 
-<pre><code>(hash-table->alist telephone-number-table)
+<pre><code>(hash-table->alist telephone-numbers-table)
                ;=> ((116123 . emotional-support)
                     (116117 . medical-advice)
                     (112 . emergency)
@@ -1539,7 +1548,7 @@ are not present in <var>hash-table</var><sub>1</sub> to
   All assertion violations are raised as R7RS Small ‘error objects’.
 
 <p>Running on R6RS, it requires SRFIs 128 (comparators) and 133
-  (vector library). A future version may eliminate the small
+  (vector library). A future version may eliminate the minor
   dependency on SRFI 133.
 
 <p>In the form in which the sample implementation is distributed in

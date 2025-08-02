@@ -53,7 +53,9 @@
   (assert (bytevector? sa))
   (let ((size (bytevector-u8-ref sa 0)))
     (bytevector-fill! sa #xFF)
-    (bytefector-u8-set! sa 0 size)))
+    (bytevector-u8-set! sa 0 size)))
+
+(define (compact-array-copy sa) (bytevector-copy sa))
 
 (define (compact-array-length sa)
   (assert (bytevector? sa))
