@@ -873,6 +873,11 @@ in <var>hash-table</var>, its value is set to the result of calling
 <var>failure</var> and that value is returned. Must execute in expected
 amortized constant time.</p>
 
+<p>
+It is an assertion violation to use this procedure on an immutable
+hash table, even if the <var>key</var> has an association in the hash
+table.
+
 <p><i>Examples:</i>
 
 <pre><code>(hash-table-intern! alphabet-table #\z (lambda () #\Ȝ))
