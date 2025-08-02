@@ -64,6 +64,8 @@
          (define (pred obj) (eq? obj name))))))
   (define-sentinel *unfilled* unfilled?)
   (define-sentinel *deletion* deletion?)
+
+  (define *default-k* 7)
   (define *growth-rate* 3/2)
 
   (include "srfi/250/internal/r6rs-compact-arrays.scm")

@@ -56,7 +56,7 @@
 ;; the actual hash table bit: fundamental constructor
 (define make-hash-table
   (case-lambda
-    ((comparator) (make-hash-table comparator 7))
+    ((comparator) (make-hash-table comparator *default-k*))
     ((comparator k)
      (unless (and (comparator? comparator) (comparator-hashable? comparator))
        (assertion-violation 'make-hash-table
@@ -344,24 +344,17 @@
 (define (hash-table-clear! ht)
   ;; assumes the hash table is going to be refilled with approximately
   ;; the same number of associations as were previously in it
-  (hash-table-compact-index-set! ht
-                                 (make-compact-array
-                                  (compact-array-length
-                                   (hash-table-compact-index ht))))
-  (hash-table-keys-vector-set! ht
-                               (make-vector
-                                (vector-length
-                                 (hash-table-keys-vector ht))
-                                *unfilled*))
-  (hash-table-values-vector-set! ht
-                                 (make-vector
-                                  (vector-length
-                                   (hash-table-values-vector ht))
-                                  *unfilled*))
+  (compact-index-clear! (hash-table-compact-index ht))
+  (vector-fill! (hash-table-keys-vector ht) *unfilled*)
+  (vector-fill! (hash-table-values-vector ht) *unfilled*)
   (hash-table-size-set! ht 0)
   (hash-table-next-entry-set! ht 0))
 
 (define (hash-table-contains? ht key)
+  (unless (hash-table-right-type? ht key)
+    (assertion-violation 'hash-table-contains?
+                         "not the right type for a key in this hash table"
+                         key ht))
   (let* ((bucket (hash-table-bucket-for-key ht key))
          (entry-idx (compact-array-ref (hash-table-compact-index ht)
                                        bucket)))
@@ -374,6 +367,18 @@
   (hash-table-cursor-next ht -1))
 (define (hash-table-cursor-last ht)
   (hash-table-cursor-previous ht (vector-length (hash-table-keys-vector ht))))
+
+(define (hash-table-cursor-for-key ht key)
+  (unless (hash-table-right-type? ht key)
+    (assertion-violation 'hash-table-ref
+                         "not the right type for a key in this hash table"
+                         key ht))
+  (let* ((bucket (hash-table-bucket-for-key ht key))
+         (entry-idx (compact-array-ref (hash-table-compact-index ht)
+                                       bucket)))
+    (if entry-idx
+        entry-idx
+        -1)))
 
 (define (hash-table-cursor-next ht cur)
   (let loop ((n (+ cur 1)))
@@ -415,6 +420,16 @@
                     (hash-table-cursor-value ht cur)
                     acc)))))
 
+(define (hash-table-fold-left proc seed ht)
+  (let loop ((cur (hash-table-cursor-first ht))
+             (acc seed))
+    (if (hash-table-cursor-at-end? ht cur)
+        acc
+        (loop (hash-table-cursor-next ht cur)
+              (proc acc
+                    (hash-table-cursor-key ht cur)
+                    (hash-table-cursor-value ht cur))))))
+
 (define (hash-table-fold-right proc seed ht)
   (let loop ((cur (hash-table-cursor-last ht))
              (acc seed))
@@ -432,6 +447,24 @@
           (lambda () (hash-table-cursor-key+value ht cur))
         proc)
       (loop (hash-table-cursor-next ht cur)))))
+
+(define (hash-table-map proc ht)
+  (let ((new-ht (hash-table-empty-copy ht)))
+    (hash-table-for-each (lambda (k v)
+                           (hash-table-add! new-ht k (proc k v)))
+                         ht)
+    new-ht))
+
+(define (hash-table-map! proc ht)
+  (let loop ((cur (hash-table-cursor-first ht)))
+    (if (hash-table-cursor-at-end? ht cur)
+        ht
+        (let ((new-val
+               (call-with-values
+                   (lambda () (hash-table-cursor-key+value ht cur))
+                 proc)))
+          (hash-table-cursor-value-set! ht cur new-val)
+          (loop (hash-table-cursor-next ht cur))))))
 
 (define (hash-table->alist ht)
   (hash-table-fold-right
@@ -535,16 +568,20 @@
 ;; from Will Clinger’s original implementation
 
 ;; not continuation-safe :-/
-(define (hash-table-unfold stop? mapper successor seed comparator)
-  (let ((ht (make-hash-table comparator)))
-    (let loop ((seed seed))
-      (if (stop? seed)
-          ht
-          (call-with-values
-              (lambda () (mapper seed))
-            (lambda (key val)
-              (hash-table-set! ht key val)
-              (loop (successor seed))))))))
+(define hash-table-unfold
+  (case-lambda
+    ((stop? mapper successor seed comparator)
+     (hash-table-unfold stop? mapper successor seed comparator *default-k*))
+    ((stop? mapper successor seed comparator k)
+     (let ((ht (make-hash-table comparator k)))
+       (let loop ((seed seed))
+         (if (stop? seed)
+             ht
+             (call-with-values
+                 (lambda () (mapper seed))
+               (lambda (key val)
+                 (hash-table-set! ht key val)
+                 (loop (successor seed))))))))))
 
 (define (hash-table-intern! ht key failure)
   (if (hash-table-contains? ht key)

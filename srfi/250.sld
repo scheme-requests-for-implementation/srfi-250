@@ -71,6 +71,7 @@
     (define (deletion? obj) (eq? obj *deletion*))
 
     (define *growth-rate* 3/2)
+    (define *default-k* 7)
 
     (define (assertion-violation who message irritants)
       (apply error

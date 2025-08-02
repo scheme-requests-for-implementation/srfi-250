@@ -51,6 +51,32 @@
                                    "not a compact array"
                                    sa))))
 
+(define (compact-array-clear! sa)
+  (define len (compact-array-length sa))
+  (cond ((bytevector? sa)
+         (let loop ((idx 0))
+           (when (<= idx len)
+             (bytevector-u8-set! sa idx #xFF)
+             (loop (+ idx 1)))))
+        ((u16vector? sa)
+         (let loop ((idx 0))
+           (when (<= idx len)
+             (u16vector-set! sa idx #xFFFF)
+             (loop (+ idx 1)))))
+        ((u32vector? sa)
+         (let loop ((idx 0))
+           (when (<= idx len)
+             (u32vector-set! sa idx #xFFFFFFFF)
+             (loop (+ idx 1)))))
+        ((u64vector? sa)
+         (let loop ((idx 0))
+           (when (<= idx len)
+             (u64vector-set! sa idx #xFFFFFFFFFFFFFFFF)
+             (loop (+ idx 1)))))
+        (else (assertion-violation 'compact-array-length
+                                   "not a compact array"
+                                   sa))))
+
 (define (compact-array-length sa)
   (cond ((bytevector? sa)
          (bytevector-length sa))

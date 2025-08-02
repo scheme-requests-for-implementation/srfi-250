@@ -49,6 +49,12 @@
     ((8) (bytevector-u64-native-set! sa (* (+ idx 1) 8) #xFFFFFFFFFFFFFFFF))
     (else (assertion-violation 'compact-array-delete! "not a compact array" sa))))
 
+(define (compact-array-clear! sa)
+  (assert (bytevector? sa))
+  (let ((size (bytevector-u8-ref sa 0)))
+    (bytevector-fill! sa #xFF)
+    (bytefector-u8-set! sa 0 size)))
+
 (define (compact-array-length sa)
   (assert (bytevector? sa))
   (- (/ (bytevector-length sa) (bytevector-u8-ref sa 0)) 1))
