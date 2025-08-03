@@ -346,11 +346,6 @@ It is undefined behaviour if the procedure argument of
 mutates the hash table being walked.</p>
 
 <p>
-It is an error to pass two hash tables that have different (in the
-sense of <code>eq?</code>) comparators to any of the procedures of
-this SRFI.</p>
-
-<p>
 Implementations are permitted to ignore user-specified hash
 functions in certain circumstances.  Specifically, if the
 equality predicate, whether passed as part of a comparator
