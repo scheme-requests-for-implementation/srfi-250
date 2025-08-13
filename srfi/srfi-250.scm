@@ -4,12 +4,16 @@
   #:use-module ((rnrs)
                 #:version (6))
   #:use-module ((scheme base)
-                #:select (vector-copy
+                #:select (modulo
+                          vector-copy
                           vector-copy!
                           vector-fill!))
+  #:use-module ((guile) #:select (include))
   #:use-module ((srfi srfi-9 gnu) #:select (set-record-type-printer!))
   #:use-module (srfi srfi-128) ; https://codeberg.org/pukkamustard/guile-srfi-128
   #:duplicates (last)
+  #:pure
+  #:declarative? #t
   #:export (;; Constructors
             make-hash-table
             (prefilled-hash-table . hash-table)
