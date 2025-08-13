@@ -60,8 +60,7 @@
    hash-table-xor!)
   (import (scheme base)
           (scheme case-lambda)
-          (scheme write) ; nocommit
-          
+
           (srfi 1)
           (srfi 128)
           (srfi 151)
