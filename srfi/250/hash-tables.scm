@@ -116,22 +116,21 @@
   ((hash-table-type-test-function ht) obj))
 
 (define (%hash-table-bucket-for ht hash key)
-  (let loop ((hash hash))
-    ;;(display hash) (newline)
-    (let* ((bucket
-            (modulo hash
-                    (compact-array-length (hash-table-compact-index ht))))
-           (entry-idx
-            (compact-array-ref (hash-table-compact-index ht) bucket)))
-      (if entry-idx
-          (let ((found-key
-                 (vector-ref (hash-table-keys-vector ht) entry-idx)))
-            (if (and (not (deletion? found-key))
-                     (or (unfilled? found-key)
-                         (hash-table-same? ht key found-key)))
-                bucket
-                (loop (+ hash 1))))
-          bucket))))
+  (let ((n-buckets (compact-array-length (hash-table-compact-index ht))))
+    (let loop ((hash hash))
+      ;;(display hash) (newline)
+      (let* ((bucket (modulo hash n-buckets))
+             (entry-idx
+              (compact-array-ref (hash-table-compact-index ht) bucket)))
+        (if entry-idx
+            (let ((found-key
+                   (vector-ref (hash-table-keys-vector ht) entry-idx)))
+              (if (and (not (deletion? found-key))
+                       (or (unfilled? found-key)
+                           (hash-table-same? ht key found-key)))
+                  bucket
+                  (loop (+ hash 1))))
+            bucket)))))
 
 (define (hash-table-bucket-for-key ht key)
   (%hash-table-bucket-for ht (hash-table-hash ht key) key))
@@ -158,7 +157,7 @@
 (define (hash-table-prune-dead-entries! ht fast?)
   ;; NB only set fast? to #t if you are going to be rehashing all
   ;; entries anyway!
-  (unless (= (hash-table-size ht) (hash-table-next-entry ht))
+  (unless (eqv? (hash-table-size ht) (hash-table-next-entry ht))
     (let loop ((from-idx 0)
                (to-idx 0))
       ;;(display from-idx) (newline) (display to-idx) (newline) (newline)
@@ -178,7 +177,7 @@
                (compact-array-delete! (hash-table-compact-index ht)
                                       (vector-ref (hash-table-values-vector ht) from-idx)))
              (loop (+ from-idx 1) to-idx))
-            ((= from-idx to-idx) (loop (+ from-idx 1) (+ to-idx 1)))
+            ((eqv? from-idx to-idx) (loop (+ from-idx 1) (+ to-idx 1)))
             (else
              (vector-set! (hash-table-keys-vector ht)
                           to-idx
@@ -409,7 +408,7 @@
                        entry-idx *deletion*)
           (vector-set! (hash-table-values-vector ht)
                        entry-idx bucket)
-          (when (= entry-idx (- (hash-table-next-entry ht) 1))
+          (when (eqv? entry-idx (- (hash-table-next-entry ht) 1))
             (hash-table-prune-dead-entries-at-end! ht))
           #t)
         #f)))
