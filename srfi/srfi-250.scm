@@ -8,7 +8,9 @@
                           vector-copy
                           vector-copy!
                           vector-fill!))
-  #:use-module ((guile) #:select (include))
+  #:use-module ((guile) #:select (include
+                                  procedure-name))
+  #:use-module (ice-9 format)
   #:use-module ((srfi srfi-9 gnu) #:select (set-record-type-printer!))
   #:use-module (srfi srfi-128) ; https://codeberg.org/pukkamustard/guile-srfi-128
   #:duplicates (last)
@@ -116,19 +118,16 @@
 
 (set-record-type-printer! (record-type-descriptor hash-table)
   (lambda (ht port)
-    (display "#<hash-table with " port)
-    (display (hash-table-size ht) port)
-    (display " entr" port)
-    (if (= (hash-table-size ht) 1)
-        (display "y (" port)
-        (display "ies (" port))
+    (format port
+            "#<hash-table with ~d entr~@:p ("
+            (hash-table-size ht))
     (let loop ((n 0)
-               (cur (hash-table-cursor-first ht)))
-      (cond ((and (>= n 6)
+               (cur (hash-table-cursor-last ht)))
+      (cond ((and (>= n 3)
                   (not (hash-table-cursor-at-end? ht cur)))
-             (display " ...)>" port))
+             (display " ...)" port))
             ((hash-table-cursor-at-end? ht cur)
-             (display ")>" port))
+             (display ")" port))
             (else
              (if (> n 0) (display #\space port))
              (let ((pair (call-with-values
@@ -136,4 +135,19 @@
                            cons)))
                (write pair port)
                (loop (+ n 1)
-                     (hash-table-cursor-next ht cur))))))))
+                     (hash-table-cursor-previous ht cur))))))
+    (cond ((procedure-name (hash-table-type-test-function ht))
+           => (lambda (name)
+                (format port ", key type ~s" name))))
+    (cond ((procedure-name (hash-table-hash-function ht))
+           => (lambda (name)
+                (format port ", hash fn ~s" name))))
+    (cond ((procedure-name (hash-table-same?-function ht))
+           => (lambda (name)
+                (format port ", equiv proc ~s" name))))
+    (format port
+            ", load ~1,2f, ~d deleted>"
+            (/ (hash-table-next-entry ht)
+               (compact-array-length (hash-table-compact-index ht)))
+            (- (hash-table-next-entry ht)
+               (hash-table-size ht)))))
