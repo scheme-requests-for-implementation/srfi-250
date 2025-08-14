@@ -59,4 +59,4 @@
 
 (define (compact-array-length sa)
   (assert (bytevector? sa))
-  (- (/ (bytevector-length sa) (bytevector-u8-ref sa 0)) 1))
+  (- (div (bytevector-length sa) (bytevector-u8-ref sa 0)) 1))
