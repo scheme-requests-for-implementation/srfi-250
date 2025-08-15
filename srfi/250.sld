@@ -88,6 +88,7 @@
       (size hash-table-size hash-table-size-set!)
       (next-entry hash-table-next-entry hash-table-next-entry-set!)
       (compact-index hash-table-compact-index hash-table-compact-index-set!)
+      (compact-index-max-fill hash-table-compact-index-max-fill hash-table-compact-index-max-fill-set!)
       (keys-vector hash-table-keys-vector hash-table-keys-vector-set!)
       (values-vector hash-table-values-vector hash-table-values-vector-set!)
       (mutable? hash-table-mutable? hash-table-mutable?-set!))

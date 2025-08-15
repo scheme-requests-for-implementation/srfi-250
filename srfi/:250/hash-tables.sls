@@ -81,6 +81,7 @@
             (mutable size)
             (mutable next-entry)
             (mutable compact-index)
+            (mutable compact-index-max-fill)
             (mutable keys-vector)
             (mutable values-vector)
             (mutable mutable?))

@@ -66,13 +66,15 @@
        (assertion-violation 'make-hash-table
                             "size is not an exact nonnegative integer"
                             k))
-     (let ((k* (max k 1)))
+     (let ((k* (max k 1))
+           (n-buckets (find-nice-n-buckets k)))
        (%make-hash-table (comparator-type-test-predicate comparator)
                          (comparator-hash-function comparator)
                          (comparator-equality-predicate comparator)
                          0
                          0
-                         (make-compact-array (find-nice-n-buckets k))
+                         (make-compact-array n-buckets)
+                         (floor (* n-buckets 2/3))
                          (make-vector k* *unfilled*)
                          (make-vector k* *unfilled*)
                          #t)))))
@@ -214,6 +216,7 @@
     ;; iterate all of them anyway
     (hash-table-prune-dead-entries! ht #t)
     (hash-table-compact-index-set! ht new-compact-index)
+    (hash-table-compact-index-max-fill-set! ht (floor (* new-size 2/3)))
     (let loop ((idx 0))
       (unless (>= idx (vector-length (hash-table-keys-vector ht)))
         (let ((key (vector-ref (hash-table-keys-vector ht) idx)))
@@ -226,8 +229,7 @@
 ;; #t if the hash table’s compact index has to grow to accommodate the
 ;; next association added
 (define (hash-table-compact-index-must-grow? ht)
-  (>= (hash-table-next-entry ht)
-      (floor (* (compact-array-length (hash-table-compact-index ht)) 2/3))))
+  (>= (hash-table-next-entry ht) (hash-table-compact-index-max-fill ht)))
 
 ;; add to the entries arrays, setting the bucket in the compact index
 (define (hash-table-add-entry! ht bucket key value)
@@ -630,6 +632,7 @@
                         (hash-table-size ht)
                         (hash-table-next-entry ht)
                         (compact-array-copy (hash-table-compact-index ht))
+                        (hash-table-compact-index-max-fill ht)
                         (vector-copy (hash-table-keys-vector ht))
                         (vector-copy (hash-table-values-vector ht))
                         #t)
