@@ -126,8 +126,7 @@
             (let ((found-key
                    (vector-ref (hash-table-keys-vector ht) entry-idx)))
               (if (and (not (deletion? found-key))
-                       (or (unfilled? found-key)
-                           (hash-table-same? ht key found-key)))
+                       (hash-table-same? ht key found-key))
                   bucket
                   (loop (+ hash 1))))
             bucket)))))
