@@ -999,12 +999,15 @@ value (in the sense of the <var>same?</var> procedure), and
 <code>#f</code> otherwise.</p>
 
 <p>
-It is an assertion violation if the equality predicates of
-<var>hash-table</var><sub>1</sub> and <var>hash-table</var><sub>2</sub>
-are not the same in the sense of the <code>eqv?</code> procedure. On
-R6RS implementations where <code>eqv?</code> is not usefully defined
-on procedures by the implementation, this assertion violation is not
-required to be raised.
+It is unspecified behaviour if the equality predicates of
+<var>hash-table</var><sub>1</sub> and
+<var>hash-table</var><sub>2</sub> would have different behaviour
+applied to any pair of keys from <var>hash-table</var><sub>1</sub> and
+<var>hash-table</var><sub>2</sub> in any order, or if the hash
+function of <var>hash-table</var><sub>1</sub> does not correspond to
+the equality predicate of <var>hash-table</var><sub>2</sub> or vice
+versa. The <code>hash-table=</code> procedure may return either
+<code>#t</code> or <code>#f</code> in this case.
 
 <p><i>Examples:</i>
 
