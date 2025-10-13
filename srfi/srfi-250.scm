@@ -45,6 +45,9 @@
             hash-table=
             hash-table-find
             hash-table-count
+            hash-table-keys
+            hash-table-values
+            hash-table-entries
             ;; Low-level iteration
             hash-table-cursor-first
             hash-table-cursor-last
@@ -74,10 +77,6 @@
             hash-table-intersection!
             hash-table-difference!
             hash-table-xor!))
-
-(define-syntax not-on-r6rs
-  (syntax-rules ()
-    ((_ body_0 body_1 ...) (begin body_0 body_1 ...))))
 
 (define (void . ignored) (if #f #f))
 (define (hash-truncate h) (bitwise-and (abs h) #xFFFFFFFF))

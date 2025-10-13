@@ -402,7 +402,10 @@ the table will return a different result when applied to that key.</p>
     <code>hash-table-size</code>,
     <code>hash-table=</code>,
     <code>hash-table-find</code>,
-    <code>hash-table-count</code>
+    <code>hash-table-count</code>,
+    <code>hash-table-keys</code>,
+    <code>hash-table-values</code>,
+    <code>hash-table-entries</code>
   </li>
   <li><a class="wiki" href="#Lowleveliteration">Low-level
     iteration</a>:
@@ -1000,12 +1003,15 @@ value (in the sense of the <var>same?</var> procedure), and
 <code>#f</code> otherwise.</p>
 
 <p>
-It is an assertion violation if the equality predicates of
-<var>hash-table</var><sub>1</sub> and <var>hash-table</var><sub>2</sub>
-are not the same in the sense of the <code>eqv?</code> procedure. On
-R6RS implementations where <code>eqv?</code> is not usefully defined
-on procedures by the implementation, this assertion violation is not
-required to be raised.
+It is unspecified behaviour if the equality predicates of
+<var>hash-table</var><sub>1</sub> and
+<var>hash-table</var><sub>2</sub> would have different behaviour
+applied to any pair of keys from <var>hash-table</var><sub>1</sub> and
+<var>hash-table</var><sub>2</sub> in any order, or if the hash
+function of <var>hash-table</var><sub>1</sub> does not correspond to
+the equality predicate of <var>hash-table</var><sub>2</sub> or vice
+versa. The <code>hash-table=</code> procedure may return either
+<code>#t</code> or <code>#f</code> in this case.
 
 <p><i>Examples:</i>
 
@@ -1056,6 +1062,20 @@ which returned true.</p>
 <pre><code>(hash-table-count (lambda (number service) (even? number))
                   telephone-numbers-table)
                ;=> 2</code></pre>
+
+<h4>
+  <code>(hash-table-keys </code> <var>hash-table</var><code>)</code>
+  <br>
+  <code>(hash-table-values </code> <var>hash-table</var><code>)</code>
+  <br>
+  <code>(hash-table-entries </code> <var>hash-table</var><code>)</code>
+</h4>
+
+<p>The procedures <code>hash-table-keys</code> and <code>hash-table-values</code> each return a vector of the keys and values in <var>hash-table</var> in insertion order. The <code>hash-table-entries</code> procedure returns two values, vectors of the keys and values respectively.
+
+<p>If <var>hash-table</var> is mutable, the vector(s) will be newly allocated and can be safely mutated. If <var>hash-table</var> is immutable, the vector(s) may be the same for each call to these procedures on that hash table, and it is undefined behaviour to mutate either vector.
+
+<p><i>Rationale:</i> These procedures can be used for safe iteration over a hash table’s contents when the action taken during iteration would violate the the limitations on hash table cursors (see next section). When no violations of these limitations occur, however, a hash table cursor will usually be more efficient because it does not need to copy the entries into new vectors.
 
 <h3 id="Lowleveliteration">Low-level iteration</h3>
 
@@ -1618,12 +1638,14 @@ are not present in <var>hash-table</var><sub>1</sub> to
 <h2 id="acknowledgements">Acknowledgements</h2>
 
 <p>
-  Some of the language of this SRFI is copied from SRFI 69 with thanks
-  to its author, Panu Kalliokoski.  However, he is not responsible for
-  what I have done with it.</p>
+  Some of the language of this SRFI is copied from SRFIs 69 and 125
+  with thanks to their authors, Panu Kalliokoski and Will Clinger.
+  However, they are not responsible for what we have done with it.</p>
 
-<p>I also acknowledge the members of the SRFI 250, 125, 126, and 128 mailing lists,
-  especially Takashi Kato, Alex Shinn, Shiro Kawai, and Per Bothner.</p>
+<p>We also acknowledge the members of the SRFI 250, 125, 126, and 128
+  mailing lists, especially Takashi Kato, Alex Shinn, Shiro Kawai, Per
+  Bothner, Shawn Wagner, Sudarshan S. Chawathe, and Marc
+  Nieper-Wißkirchen.</p>
 
 <h2 id=footnotes>Footnotes</h2>
 
