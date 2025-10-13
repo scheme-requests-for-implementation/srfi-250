@@ -513,6 +513,37 @@
       (>= cur (vector-length (hash-table-keys-vector ht)))
       (unfilled? (vector-ref (hash-table-keys-vector ht) cur))))
 
+;; for when cursor-based iteration is unsafe
+
+(define (hash-table-keys ht)
+  (if (hash-table-mutable? ht)
+      (let* ((size (hash-table-size ht))
+             (vec (make-vector size)))
+        (let loop ((cur (hash-table-cursor-first ht))
+                   (idx 0))
+          (unless (>= idx size)
+            (vector-set! vec idx (hash-table-cursor-key ht cur))
+            (loop (hash-table-cursor-next ht cur)
+                  (+ idx 1)))
+          vec))
+      (hash-table-keys-vector ht)))
+(define (hash-table-values ht)
+  (if (hash-table-mutable? ht)
+      (let* ((size (hash-table-size ht))
+             (vec (make-vector size)))
+        (let loop ((cur (hash-table-cursor-first ht))
+                   (idx 0))
+          (unless (>= idx size)
+            (vector-set! vec idx (hash-table-cursor-value ht cur))
+            (loop (hash-table-cursor-next ht cur)
+                  (+ idx 1)))
+          vec))
+      (hash-table-values-vector ht)))
+
+(define (hash-table-entries ht)
+  (values (hash-table-keys ht)
+          (hash-table-values ht)))
+
 (define (hash-table-fold proc seed ht)
   (let loop ((cur (hash-table-cursor-first ht))
              (acc seed))

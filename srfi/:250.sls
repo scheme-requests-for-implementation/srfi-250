@@ -29,6 +29,9 @@
    hash-table=
    hash-table-find
    hash-table-count
+   hash-table-keys
+   hash-table-values
+   hash-table-entries
    ;; Low-level iteration
    hash-table-cursor-first
    hash-table-cursor-last
