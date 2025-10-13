@@ -707,12 +707,6 @@
   ht_1)
 
 (define (hash-table= value=? ht_1 ht_2)
-  (not-on-r6rs
-   (unless (eqv? (hash-table-same?-function ht_1)
-                 (hash-table-same?-function ht_2))
-     (assertion-violation 'hash-table=
-                          "hash tables have different equality predicates"
-                          ht_1 ht_2)))
   (and
    ;; check every association in ht_1 has a corresponding association
    ;; in ht_2

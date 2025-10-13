@@ -73,10 +73,6 @@
                (else))
 
   (begin
-    (define-syntax not-on-r6rs
-      (syntax-rules ()
-        ((_ body_0 body_1 ...) (begin body_0 body_1 ...))))
-
     (define (void . ignored) (if #f #f))
     (define (hash-truncate h) (bitwise-and (abs h) #xFFFFFFFF))
 

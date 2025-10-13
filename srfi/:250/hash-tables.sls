@@ -71,9 +71,6 @@
           (srfi :250 internal include)
           (srfi :250 internal immutable))
 
-  (define-syntax not-on-r6rs
-    (syntax-rules ()
-      ((_ body_0 body_1 ...) (begin))))
   (define (void . ignored) (if #f #f))
   (define (hash-truncate h) (bitwise-and (abs h) #xFFFFFFFF))
 
