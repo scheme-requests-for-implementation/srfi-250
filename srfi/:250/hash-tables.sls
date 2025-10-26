@@ -93,8 +93,8 @@
     (syntax-rules ()
       ((_ name pred)
        (begin
-         (define-record-type the-sentinel-type)
-         (define name (make-the-sentinel-type))
+         (define-record-type the-sentinel-type (fields sentinel-name))
+         (define name (make-the-sentinel-type 'name))
          (define (pred obj) (eq? obj name))))))
   (define-sentinel *unfilled* unfilled?)
   (define-sentinel *deletion* deletion?)
