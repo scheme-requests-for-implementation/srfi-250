@@ -427,24 +427,30 @@
 ;; Predicates
 
 (test-group "Predicates"
-  (let ((tiny-table
-         (make-hash-table (make-comparator number? = #f number-hash)))
-        (suits-table
-         (hash-table symbol-comparator
-                     'clubs #\x2663
-                     'diamonds #\x2666
-                     'hearts #\x2665
-                     'spades #\x2660)))
+  (let* ((tiny-table
+          (make-hash-table (make-comparator number? = #f number-hash)))
+         (suits-table
+          (hash-table symbol-comparator
+                      'clubs #\x2663
+                      'diamonds #\x2666
+                      'hearts #\x2665
+                      'spades #\x2660))
+         (immutable-suits-table (hash-table-copy suits-table #f)))
     (test-group "Hash-table?"
       (test-assert (not (hash-table? 'a-symbol)))
       (test-assert (hash-table? tiny-table))
+      (test-assert (hash-table? suits-table))
+      (test-assert (hash-table? immutable-suits-table))
       (test-assert (not (hash-table? '((an-alist . not-a) (hash . table))))))
 
     (test-group "Hash-table-contains?"
       (test-assert (not (hash-table-contains? tiny-table 0)))
       (test-assert (hash-table-contains? suits-table 'clubs))
       (test-assert (hash-table-contains? suits-table 'spades))
+      (test-assert (hash-table-contains? immutable-suits-table 'clubs))
+      (test-assert (hash-table-contains? immutable-suits-table 'spades))
       (test-assert (not (hash-table-contains? suits-table 'joker)))
+      (test-assert (not (hash-table-contains? immutable-suits-table 'joker)))
       (let ((tiny-table-2
              (make-hash-table (make-comparator number? = #f number-hash))))
         (test-assert (not (hash-table-contains? tiny-table-2 1/2)))
@@ -456,6 +462,7 @@
     (test-group "Hash-table-empty?"
       (test-assert (hash-table-empty? tiny-table))
       (test-assert (not (hash-table-empty? suits-table)))
+      (test-assert (not (hash-table-empty? immutable-suits-table)))
       (let ((tiny-table-2
              (make-hash-table (make-comparator number? = #f number-hash))))
         (test-assert (hash-table-empty? tiny-table-2))
@@ -985,7 +992,364 @@
       (test "No mutation took place" 103
         (hash-table-ref/default immutable-pop-test-table 102 #f))
       (test "No mutation took place" 101
-        (hash-table-ref/default immutable-pop-test-table 100 #f)))))
+        (hash-table-ref/default immutable-pop-test-table 100 #f))))
+
+  (test-group "Hash-table-clear!"
+    (let ((clear-test-table (hash-table symbol-comparator
+                                        'clubs #\x2663
+                                        'diamonds #\x2666
+                                        'hearts #\x2665
+                                        'spades #\x2660)))
+      (test-assert "Emptying it"
+        (begin
+          (hash-table-clear! clear-test-table)
+          #t))
+      (test "Size is correct" 0
+        (hash-table-size clear-test-table))
+      (test-assert "It’s empty"
+        (hash-table-empty? clear-test-table))
+      (for-each
+       (lambda (suit)
+         (test (string-append (symbol->string suit) " is gone") #f
+           (hash-table-ref/default clear-test-table suit #f)))
+       '(clubs diamonds hearts spades))
+      (test-assert "Can still add things"
+        (begin
+          (hash-table-add! clear-test-table 'joker #\x1F921)
+          #t))
+      (test "Can retrieve what was just added" #\x1F921
+        (hash-table-ref/default clear-test-table 'joker #f)))
+    (let ((immutable-clear-test-table
+           (hash-table-copy (hash-table symbol-comparator
+                                        'clubs #\x2663
+                                        'diamonds #\x2666
+                                        'hearts #\x2665
+                                        'spades #\x2660)
+                            #f)))
+      (test-error "Can’t clear an immutable hash table" assertion-violation?
+        (hash-table-clear! immutable-clear-test-table))
+      (test "Size is correct" 4
+        (hash-table-size immutable-clear-test-table))
+      (test-assert "It’s not empty"
+        (not (hash-table-empty? immutable-clear-test-table)))
+      (for-each
+       (lambda (suit)
+         (test (string-append (symbol->string (car suit)) " is still there") (cdr suit)
+           (hash-table-ref/default immutable-clear-test-table (car suit) #f)))
+       '((clubs . #\x2663) (diamonds . #\x2666) (hearts . #\x2665) (spades . #\x2660))))))
+
+;; The whole hash table
+
+(test-group "The whole hash table"
+  ;; Hash-table-size tests are spread throughout this test suite,
+  ;; ensuring the size is correct after many individual mutations
+
+  (test-group "Hash-table="
+    (let ((a (hash-table symbol-comparator
+                         'a 1
+                         'b 2
+                         'c 3
+                         'd 4))
+          (b (hash-table symbol-comparator
+                         'a 1
+                         'b 2
+                         'c 3
+                         'd 4))
+          (c (hash-table symbol-comparator
+                         'd 4
+                         'b 2
+                         'c 3
+                         'a 1))
+          (d (hash-table symbol-comparator
+                         'a 2
+                         'b 3
+                         'c 4
+                         'd 5)))
+      (test-assert "When the insertion orders are the same"
+        (hash-table= = a b))
+      (test-assert "When the insertion orders are different"
+        (hash-table= = a c))
+      (test-assert "The predicate is called in the order a b"
+        (hash-table= (lambda (x y)
+                       (= (+ x 1) y))
+                     a d))
+      (hash-table-delete! a 'a)
+      (test-assert "Not when one key is missing in a"
+        (not (hash-table= = a b)))
+      (test-assert "Not when one key is missing in b"
+        (not (hash-table= = b a)))
+      (test-assert "When both hash tables are empty"
+        (hash-table= (lambda (x y) (assertion-violation #f "should never be called!"))
+                     (make-hash-table symbol-comparator)
+                     (make-hash-table symbol-comparator)))
+      (test-assert "Not when one hash table is empty and the other isn’t"
+        (not (hash-table= =
+                          (make-hash-table symbol-comparator)
+                          a)))
+      (test-assert "Not when one hash table is empty and the other isn’t"
+        (not (hash-table= =
+                          a
+                          (make-hash-table symbol-comparator))))
+      (test-assert "When one hash table is immutable and the other isn’t"
+        (hash-table= =
+                     (hash-table-copy a #f)
+                     a))
+      (test-assert "Not when one hash table is immutable and the other isn’t"
+        (not (hash-table= =
+                          (hash-table-copy a #f)
+                          b)))
+      (test-assert "When both hash tables are immutable"
+        (hash-table= =
+                     (hash-table-copy a #f)
+                     (hash-table-copy a #f)))))
+
+  (test-group "Hash-table-find"
+    (let ((find-test-table
+           (hash-table symbol-comparator
+                       'a 1
+                       'b 2
+                       'c 3
+                       'd 4)))
+      (test "Finding a key by a value" 'd
+        (hash-table-find (lambda (k v) (if (eqv? v 4) k #f))
+                         find-test-table
+                         (lambda () 'not-found)))
+      (test "Finds the leftmost key in insertion order" 'b
+        (hash-table-find (lambda (k v) (if (even? v) k #f))
+                         find-test-table
+                         (lambda () 'not-found)))
+      (test "Invokes the failure proc" 'not-found
+        (hash-table-find (lambda (k v) (if (eqv? v 5) k #f))
+                         find-test-table
+                         (lambda () 'not-found)))))
+
+  (test-group "Hash-table-count"
+    (let ((count-test-table
+           (hash-table symbol-comparator
+                       'a 1
+                       'b 2
+                       'c 3
+                       'd 4)))
+      (test "Counts based on value" 2
+        (hash-table-count (lambda (k v) (even? v)) count-test-table))
+      (test "0 when there are none" 0
+        (hash-table-count (lambda (k v) (> v 4)) count-test-table))
+      (test "0 when the hash table is empty" 0
+        (hash-table-count (lambda (k v) #t) (make-hash-table exact-integer-comparator)))))
+
+  (test-group "Hash-table-keys, hash-table-values, hash-table-entries"
+    (let ((mostly-abugidas-table
+           (hash-table-unfold (lambda (c) (char>? c #\x10A0))
+                              (lambda (c) (values c (char->integer c)))
+                              (lambda (c) (integer->char (+ 1 (char->integer c))))
+                              #\x900
+                              char-comparator
+                              26)))
+      (let ((keys-vec (hash-table-keys mostly-abugidas-table))
+            (vals-vec (hash-table-values mostly-abugidas-table)))
+        (test "Keys size is the same as that of the hash table"
+            (hash-table-size mostly-abugidas-table)
+          (vector-length keys-vec))
+        (test "Values size is the same as that of the hash table"
+            (hash-table-size mostly-abugidas-table)
+          (vector-length vals-vec))
+        (test-assert "Insertion order of keys"
+          (apply char<? (vector->list keys-vec)))
+        (test-assert "Insertion order of values"
+          (apply < (vector->list vals-vec)))
+        (vector-for-each
+         (lambda (k v)
+           (test (string-append (string k) " is there") v
+             (hash-table-ref/default mostly-abugidas-table k #f)))
+         keys-vec vals-vec)
+        (test-assert "Each invocation of -keys on a mutable hash table yields a different vector"
+          (not (eq? keys-vec (hash-table-keys mostly-abugidas-table))))
+        (test-assert "Each invocation of -values on a mutable hash table yields a different vector"
+          (not (eq? vals-vec (hash-table-keys mostly-abugidas-table))))
+        (let-values (((keys2-vec vals2-vec)
+                      (hash-table-entries mostly-abugidas-table)))
+          (test-assert "-entries keys vector same as -keys"
+            (equal? keys2-vec keys-vec))
+          (test-assert "-entries values vector same as -values"
+            (equal? vals2-vec vals-vec))
+          (test-assert "Modifying -entries values vector of mutable table doesn’t affect the hash table"
+            (begin
+              (assert (= (vector-ref vals2-vec 0) #x900))
+              (vector-set! vals2-vec 0 'foo)
+              (hash-table-ref mostly-abugidas-table #\x900 #x900))))
+        (test-assert "Modifying -values vector of mutable table doesn’t affect the hash table"
+          (begin
+            (assert (= (vector-ref vals-vec 0) #x900))
+            (vector-set! vals-vec 0 'foo)
+            (hash-table-ref mostly-abugidas-table #\x900 #x900)))))))
+
+;; Low-level iteration
+
+(test-group "Low-level iteration"
+  (let ((tiny-table (make-hash-table exact-integer-comparator 10))
+        (mostly-abugidas-table
+         (hash-table-unfold (lambda (c) (char>? c #\x10A0))
+                            (lambda (c) (values c (char->integer c)))
+                            (lambda (c) (integer->char (+ 1 (char->integer c))))
+                            #\x900
+                            char-comparator
+                            26)))
+    (test-assert (hash-table-cursor-at-end? tiny-table
+                                            (hash-table-cursor-first tiny-table)))
+    (test-assert (hash-table-cursor-at-end? tiny-table
+                                            (hash-table-cursor-last tiny-table)))
+    (test-assert (hash-table-cursor-at-end?
+                  mostly-abugidas-table
+                  (hash-table-cursor-previous mostly-abugidas-table
+                                              (hash-table-cursor-first mostly-abugidas-table))))
+    (test-assert (hash-table-cursor-at-end?
+                  mostly-abugidas-table
+                  (hash-table-cursor-next mostly-abugidas-table
+                                          (hash-table-cursor-last mostly-abugidas-table))))
+    (let loop ((cur (hash-table-cursor-first mostly-abugidas-table)))
+      (unless (hash-table-cursor-at-end? mostly-abugidas-table
+                                         (hash-table-cursor-next mostly-abugidas-table cur))
+        (test-assert
+            "Forwards and backwards is a no-op"
+          (char=? (hash-table-cursor-key mostly-abugidas-table cur)
+                  (hash-table-cursor-key mostly-abugidas-table
+                                         (hash-table-cursor-previous
+                                          mostly-abugidas-table
+                                          (hash-table-cursor-next
+                                           mostly-abugidas-table
+                                           cur)))))
+        (loop (hash-table-cursor-next mostly-abugidas-table cur))))
+    (let loop ((cur (hash-table-cursor-last mostly-abugidas-table)))
+      (unless (hash-table-cursor-at-end? mostly-abugidas-table
+                                         (hash-table-cursor-previous mostly-abugidas-table cur))
+        (test-assert
+            "Backwards and forwards is a no-op"
+          (char=? (hash-table-cursor-key mostly-abugidas-table cur)
+                  (hash-table-cursor-key mostly-abugidas-table
+                                         (hash-table-cursor-next
+                                          mostly-abugidas-table
+                                          (hash-table-cursor-previous
+                                           mostly-abugidas-table
+                                           cur)))))
+        (loop (hash-table-cursor-previous mostly-abugidas-table cur))))
+    (let loop ((cur (hash-table-cursor-first mostly-abugidas-table)))
+      (unless (hash-table-cursor-at-end? mostly-abugidas-table cur)
+        (test (hash-table-cursor-key mostly-abugidas-table cur) (integer->char (hash-table-cursor-value mostly-abugidas-table cur)))
+        (let-values
+            (((k v) (hash-table-cursor-key+value mostly-abugidas-table cur)))
+          (test k (hash-table-cursor-key mostly-abugidas-table cur))
+          (test v (hash-table-cursor-value mostly-abugidas-table cur)))
+        (unless (hash-table-cursor-at-end? mostly-abugidas-table (hash-table-cursor-next mostly-abugidas-table cur))
+          (test-assert (not (char=? (hash-table-cursor-key mostly-abugidas-table cur)
+                                    (hash-table-cursor-key
+                                     mostly-abugidas-table
+                                     (hash-table-cursor-next mostly-abugidas-table cur))))))
+        (loop (hash-table-cursor-next mostly-abugidas-table cur))))
+    (let loop ((cur (hash-table-cursor-last mostly-abugidas-table)))
+      (unless (hash-table-cursor-at-end? mostly-abugidas-table cur)
+        (test (hash-table-cursor-key mostly-abugidas-table cur) (integer->char (hash-table-cursor-value mostly-abugidas-table cur)))
+        (let-values
+            (((k v) (hash-table-cursor-key+value mostly-abugidas-table cur)))
+          (test k (hash-table-cursor-key mostly-abugidas-table cur))
+          (test v (hash-table-cursor-value mostly-abugidas-table cur)))
+        (unless (hash-table-cursor-at-end? mostly-abugidas-table (hash-table-cursor-previous mostly-abugidas-table cur))
+          (test-assert (not (char=? (hash-table-cursor-key mostly-abugidas-table cur)
+                                    (hash-table-cursor-key
+                                     mostly-abugidas-table
+                                     (hash-table-cursor-previous mostly-abugidas-table cur))))))
+        (loop (hash-table-cursor-previous mostly-abugidas-table cur))))
+    (let loop ((cur1 (hash-table-cursor-first mostly-abugidas-table)))
+      (define cur2 (hash-table-cursor-next mostly-abugidas-table cur1))
+      (unless (hash-table-cursor-at-end? mostly-abugidas-table cur2)
+        (test-assert (char<? (hash-table-cursor-key mostly-abugidas-table cur1) (hash-table-cursor-key mostly-abugidas-table cur2)))
+        (test-assert (< (hash-table-cursor-value mostly-abugidas-table cur1) (hash-table-cursor-value mostly-abugidas-table cur2)))
+        (loop cur2)))
+    (let loop ((cur1 (hash-table-cursor-last mostly-abugidas-table)))
+      (define cur2 (hash-table-cursor-previous mostly-abugidas-table cur1))
+      (unless (hash-table-cursor-at-end? mostly-abugidas-table cur2)
+        (test-assert (char>? (hash-table-cursor-key mostly-abugidas-table cur1) (hash-table-cursor-key mostly-abugidas-table cur2)))
+        (test-assert (> (hash-table-cursor-value mostly-abugidas-table cur1) (hash-table-cursor-value mostly-abugidas-table cur2)))
+        (loop cur2)))
+    (let loop ((cur (hash-table-cursor-first mostly-abugidas-table)))
+      (unless (hash-table-cursor-at-end? mostly-abugidas-table cur)
+        (let ((old-value (hash-table-cursor-value mostly-abugidas-table cur)))
+          (hash-table-cursor-value-set! mostly-abugidas-table cur
+                                        (- old-value #x900))
+          (test (- old-value #x900) (hash-table-ref/default mostly-abugidas-table (hash-table-cursor-key mostly-abugidas-table cur) #f))
+          (test (- old-value #x900) (hash-table-cursor-value mostly-abugidas-table (hash-table-cursor-for-key mostly-abugidas-table (hash-table-cursor-key mostly-abugidas-table cur)))))
+        (loop (hash-table-cursor-next mostly-abugidas-table cur))))))
+
+;; Mapping and folding
+
+(test-group "Mapping and folding"
+  (test-group "Hash-table-map"
+    (let ((map-test-table
+           (hash-table-unfold (lambda (c) (char>? c #\z))
+                              (lambda (c) (values c (char-upcase c)))
+                              (lambda (c) (integer->char (+ 1 (char->integer c))))
+                              #\a
+                              char-comparator
+                              26))
+          (mapped-test-table #f))
+      (test-assert "Mapping"
+        (begin
+          (set! mapped-test-table (hash-table-map (lambda (k v)
+                                                    (string v k))
+                                                  map-test-table))
+          #t))
+      (test-assert "It’s a hash table"
+        (hash-table? mapped-test-table))
+      (test "Size is correct" (hash-table-size map-test-table)
+        (hash-table-size mapped-test-table))
+      (test "Keys are the same and same insertion order"
+          (hash-table-keys map-test-table)
+        (hash-table-keys mapped-test-table))
+      (string-for-each
+       (lambda (c)
+         (test (string-append "Correct value for " (string c)) (string (char-upcase c) c)
+           (hash-table-ref/default mapped-test-table c #f)))
+       "abcdefghijklmnopqrstuvwxyz"))
+    (let ((map-test-table
+           (hash-table-copy
+            (hash-table-unfold (lambda (c) (char>? c #\z))
+                               (lambda (c) (values c (char-upcase c)))
+                               (lambda (c) (integer->char (+ 1 (char->integer c))))
+                               #\a
+                               char-comparator
+                               26)
+            #f))
+          (mapped-test-table #f))
+      (test-assert "Mapping an immutable hash table"
+        (begin
+          (set! mapped-test-table (hash-table-map (lambda (k v)
+                                                    (string v k))
+                                                  map-test-table))
+          #t))
+      (test-assert "It’s a hash table"
+        (hash-table? mapped-test-table))
+      (test-assert "It’s a mutable hash table"
+        (hash-table-mutable? mapped-test-table))
+      (test "Size is correct" (hash-table-size map-test-table)
+        (hash-table-size mapped-test-table))
+      (test "Keys are the same and same insertion order"
+          (hash-table-keys map-test-table)
+        (hash-table-keys mapped-test-table))
+      (string-for-each
+       (lambda (c)
+         (test (string-append "Correct value for " (string c)) (string (char-upcase c) c)
+           (hash-table-ref/default mapped-test-table c #f)))
+       "abcdefghijklmnopqrstuvwxyz"))))
+
+
+;; Copying and conversion
+(test-group "Copying and conversion"
+  #f)
+
+
+;; Hash tables as sets
+
+(test-group "Hash tables as sets"
+  #f)
 
 ;; local Variables:
 ;; eval: (put 'test 'scheme-indent-function 2)
