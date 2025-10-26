@@ -180,11 +180,7 @@
                                         deleted-bucket)
                  (let loop ((deleted-bucket deleted-bucket)
                             (examine-bucket (+ deleted-bucket 1)))
-                   (let ((deleted-bucket
-                          (modulo deleted-bucket
-                                  (compact-array-length
-                                   (hash-table-compact-index ht))))
-                         (examine-bucket
+                   (let ((examine-bucket
                           (modulo examine-bucket
                                   (compact-array-length
                                    (hash-table-compact-index ht)))))
