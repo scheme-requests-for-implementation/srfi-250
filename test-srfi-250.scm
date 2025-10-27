@@ -880,38 +880,75 @@
         (hash-table-ref/default immutable-intern-test-table 100 #f))))
 
   (test-group "Hash-table-update!"
-    ;; TODO: Add tests for insertion order, mutability
     (test-group "Three arguments"
-      (let ((ht (hash-table char-comparator #\a 0)))
+      (let ((ht (hash-table char-comparator
+                            #\a 0
+                            #\b 0
+                            #\c 0
+                            #\d 0)))
         (test-assert "Updating existing entry"
           (begin
             (hash-table-update! ht #\a (lambda (v) (+ v 1)))
             #t))
         (test "It was actually updated" 1
           (hash-table-ref/default ht #\a #f))
-        (test "Size is correct" 1
+        (test "Size is correct" 4
           (hash-table-size ht))
         (test-error "Updating a non-existent entry" assertion-violation?
-          (hash-table-update! ht #\b (lambda (v) (+ v 1))))))
+          (hash-table-update! ht #\z (lambda (v) (+ v 1))))
+        (test "Insertion order not affected" '(#\a #\b #\c #\d)
+          (hash-table-map->list (lambda (k v) k) ht))
+        (let ((immutable-ht (hash-table-copy ht #f)))
+          (test-error "Can’t update! an immutable hash table" assertion-violation?
+            (begin
+              (hash-table-update! immutable-ht #\a (lambda (v) (+ v 1)))
+              #t))
+          (test "No mutation took place" 1
+            (hash-table-ref/default immutable-ht #\a #f)))))
     (test-group "Four arguments"
-      (let ((ht (hash-table char-comparator #\a 0)))
+      (let ((ht (hash-table char-comparator
+                            #\a 0
+                            #\b 0
+                            #\c 0
+                            #\d 0)))
         (test-assert "Updating existing entry"
           (begin
             (hash-table-update! ht #\a (lambda (v) (+ v 1)) (lambda () -1))
             #t))
         (test "It was actually updated" 1
           (hash-table-ref/default ht #\a #f))
-        (test "Size is correct" 1
+        (test "Size is correct" 4
           (hash-table-size ht))
         (test-assert "Updating a non-existent entry"
           (begin
-            (hash-table-update! ht #\b (lambda (v) (+ v 1)) (lambda () 0))))
+            (hash-table-update! ht #\z (lambda (v) (+ v 1)) (lambda () 0))))
         (test "Previously non-existent entry was updated" 1
-          (hash-table-ref/default ht #\b #f))
-        (test "Size is correct" 2
-          (hash-table-size ht))))
+          (hash-table-ref/default ht #\z #f))
+        (test "Size is correct" 5
+          (hash-table-size ht))
+        (test "Insertion order" '(#\a #\b #\c #\d #\z)
+          (hash-table-map->list (lambda (k v) k) ht))
+        (let ((immutable-ht (hash-table-copy ht #f)))
+          (test-error "Can’t update! an immutable hash table" assertion-violation?
+            (begin
+              (hash-table-update! immutable-ht #\a (lambda (v) (+ v 1)) (lambda () -1))
+              #t))
+          (test "No mutation took place" 1
+            (hash-table-ref/default immutable-ht #\a #f))
+          (test-error "Can’t update! a new entry in an immutable hash table" assertion-violation?
+            (begin
+              (hash-table-update! immutable-ht #\y (lambda (v) (+ v 1)) (lambda () -1))
+              #t))
+          (test "No mutation took place" #f
+            (hash-table-ref/default immutable-ht #\y #f))
+          (test "Size is correct" 5
+            (hash-table-size immutable-ht)))))
     (test-group "Five arguments"
-      (let ((ht (hash-table char-comparator #\a 0)))
+      (let ((ht (hash-table char-comparator
+                            #\a 0
+                            #\b 0
+                            #\c 0
+                            #\d 0)))
         (test-assert "Updating existing entry"
           (begin
             (hash-table-update! ht #\a
@@ -921,18 +958,41 @@
             #t))
         (test "It was actually updated" 101
           (hash-table-ref/default ht #\a #f))
-        (test "Size is correct" 1
+        (test "Size is correct" 4
           (hash-table-size ht))
         (test-assert "Updating a non-existent entry"
           (begin
-            (hash-table-update! ht #\b
+            (hash-table-update! ht #\z
                                 (lambda (v) (+ v 1))
                                 (lambda () 0)
                                 (lambda (v) (+ v 100)))))
         (test "Previously non-existent entry was updated" 1
-          (hash-table-ref/default ht #\b #f))
-        (test "Size is correct" 2
-          (hash-table-size ht)))))
+          (hash-table-ref/default ht #\z #f))
+        (test "Size is correct" 5
+          (hash-table-size ht))
+        (test "Insertion order" '(#\a #\b #\c #\d #\z)
+          (hash-table-map->list (lambda (k v) k) ht))
+        (let ((immutable-ht (hash-table-copy ht #f)))
+          (test-error "Can’t update! an immutable hash table" assertion-violation?
+            (begin
+              (hash-table-update! immutable-ht #\a
+                                  (lambda (v) (+ v 1))
+                                  (lambda () -1)
+                                  (lambda (v) (+ v 100)))
+              #t))
+          (test "No mutation took place" 101
+            (hash-table-ref/default immutable-ht #\a #f))
+          (test-error "Can’t update! a new entry in an immutable hash table" assertion-violation?
+            (begin
+              (hash-table-update! immutable-ht #\y
+                                  (lambda (v) (+ v 1))
+                                  (lambda () 0)
+                                  (lambda (v) (+ v 100)))
+              #t))
+          (test "No mutation took place" #f
+            (hash-table-ref/default immutable-ht #\y #f))
+          (test "Size is correct" 5
+            (hash-table-size immutable-ht))))))
 
   (test-group "Hash-table-update!/default"
     (let ((ht (hash-table char-comparator #\a '())))
@@ -1347,18 +1407,416 @@
        (lambda (c)
          (test (string-append "Correct value for " (string c)) (string (char-upcase c) c)
            (hash-table-ref/default mapped-test-table c #f)))
-       "abcdefghijklmnopqrstuvwxyz"))))
+       "abcdefghijklmnopqrstuvwxyz")))
+
+  (test-group "Hash-table-map!"
+    (let ((mapb-test-table
+           (hash-table-unfold (lambda (n) (> n 900))
+                              (lambda (n) (values n (+ n 100)))
+                              (lambda (n) (+ n 1))
+                              0
+                              exact-integer-comparator)))
+      (let ((vals (hash-table-values mapb-test-table)))
+        (test-assert "Running map!"
+          (begin
+            (hash-table-map! (lambda (k v) (- v 100)) mapb-test-table)
+            #t))
+        (test "Every value now 100 less"
+            (map (lambda (v) (- v 100)) (vector->list vals))
+          (vector->list (hash-table-values mapb-test-table)))))
+    (let ((immutable-mapb-test-table
+           (hash-table-copy
+            (hash-table-unfold (lambda (n) (> n 900))
+                               (lambda (n) (values n (+ n 100)))
+                               (lambda (n) (+ n 1))
+                               0
+                               exact-integer-comparator)
+            #f)))
+      (let ((vals (hash-table-values immutable-mapb-test-table)))
+        (test-error "Can’t map! an immutable hash table" assertion-violation?
+          (hash-table-map! (lambda (k v) (- v 100)) immutable-mapb-test-table))
+        (test "No mutation took place"
+            vals
+          (hash-table-values immutable-mapb-test-table)))))
+
+  (test-group "Hash-table-for-each"
+    (let ((foreach-test-table
+           (hash-table-unfold (lambda (c) (char>? c #\z))
+                              (lambda (c) (values c (char-upcase c)))
+                              (lambda (c) (integer->char (+ 1 (char->integer c))))
+                              #\a
+                              char-comparator
+                              26))
+          (out-port (open-output-string)))
+      (test "Iterates"
+          "AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz"
+        (begin
+          (hash-table-for-each
+           (lambda (k v)
+             (display v out-port)
+             (display k out-port))
+           foreach-test-table)
+          (get-output-string out-port)))))
+
+  ;; Hash-table-map->list is used to test insertion order throughout
+  ;; this test suite
+
+  (test-group "Hash-table-fold"
+    (let ((fold-test-table
+           (hash-table-unfold (lambda (n) (> n 5))
+                              (lambda (n) (values n (- n)))
+                              (lambda (n) (+ n 1))
+                              1
+                              exact-integer-comparator)))
+      (test "Folds in any order" '(15 . -120)
+        (hash-table-fold (lambda (k v acc)
+                           (cons (+ k (car acc))
+                                 (* v (cdr acc))))
+                         '(0 . 1)
+                         fold-test-table))
+
+      (test "Returns the seed when the hash table is empty" #f
+        (hash-table-fold (lambda (k v acc)
+                           #t)
+                         #f
+                         (make-hash-table exact-integer-comparator)))))
+
+  (test-group "Hash-table-fold-left"
+    (let ((fold-left-test-table
+           (hash-table-unfold (lambda (c) (char>? c #\z))
+                              (lambda (c) (values c (char-upcase c)))
+                              (lambda (c) (integer->char (+ 1 (char->integer c))))
+                              #\a
+                              char-comparator
+                              26)))
+      (test "Folds from left to right"
+          (reverse '("Aa" "Bb" "Cc" "Dd" "Ee" "Ff" "Gg" "Hh" "Ii"
+                     "Jj" "Kk" "Ll" "Mm" "Nn" "Oo" "Pp" "Qq" "Rr"
+                     "Ss" "Tt" "Uu" "Vv" "Ww" "Xx" "Yy" "Zz"))
+        (hash-table-fold-left (lambda (acc k v)
+                                (cons (string v k) acc))
+                              '()
+                              fold-left-test-table))
+
+      (test "Returns the seed when the hash table is empty" #f
+        (hash-table-fold (lambda (acc k v)
+                           #t)
+                         #f
+                         (make-hash-table exact-integer-comparator)))))
+
+  (test-group "Hash-table-fold-right"
+    (let ((fold-right-test-table
+           (hash-table-unfold (lambda (c) (char>? c #\z))
+                              (lambda (c) (values c (char-upcase c)))
+                              (lambda (c) (integer->char (+ 1 (char->integer c))))
+                              #\a
+                              char-comparator
+                              26)))
+      (test "Folds from right to left"
+          '("Aa" "Bb" "Cc" "Dd" "Ee" "Ff" "Gg" "Hh" "Ii"
+            "Jj" "Kk" "Ll" "Mm" "Nn" "Oo" "Pp" "Qq" "Rr"
+            "Ss" "Tt" "Uu" "Vv" "Ww" "Xx" "Yy" "Zz")
+        (hash-table-fold-right (lambda (k v acc)
+                                 (cons (string v k) acc))
+                               '()
+                               fold-right-test-table))
+
+      (test "Returns the seed when the hash table is empty" #f
+        (hash-table-fold (lambda (k v acc)
+                           #t)
+                         #f
+                         (make-hash-table exact-integer-comparator)))))
+
+  (test-group "Hash-table-prune!"
+    (let ((prune-test-table
+           (hash-table-unfold (lambda (c) (char>? c #\x7F))
+                              (lambda (c) (values c (char->integer c)))
+                              (lambda (c) (integer->char (+ 1 (char->integer c))))
+                              #\x00
+                              char-comparator)))
+      (test "Pruning" 42
+        (hash-table-prune!
+         (lambda (k v)
+           (or (< v 32)
+               (char-numeric? k)))
+         prune-test-table))
+      (test "Size is correct" 86 (hash-table-size prune-test-table))
+      (let ((remaining-keys
+             (append (string->list " !\"#$%&'()*+,-./:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~") '(#\x7F))))
+        (for-each
+         (lambda (c)
+           (test (string-append "#\\x" (number->string (char->integer c)) " is still there")
+               (char->integer c)
+             (hash-table-ref/default prune-test-table c #f)))
+         remaining-keys)
+        (test "Everything’s still in order"
+            (map (lambda (c) (cons c (char->integer c))) remaining-keys)
+          (hash-table-map->list cons prune-test-table))
+        (let loop ((more remaining-keys))
+          (unless (null? more)
+            (let ((key (car more)))
+              (test (string-append "Pruning only \\x" (number->string (char->integer key))) 1
+                (hash-table-prune! (lambda (k v) (eqv? k key))
+                                   prune-test-table))
+              (test "Size is correct" (length (cdr more))
+                (hash-table-size prune-test-table))
+              (test "Everything’s still in order"
+                  (map (lambda (c) (cons c (char->integer c))) (cdr more))
+                (hash-table-map->list cons prune-test-table)))
+            (loop (cdr more))))))
+    (test-group "Hash table is left in a consistent state when the procedure errors"
+      (let
+          ((broken-prune-test-table
+            (hash-table-unfold (lambda (n) (>= n 10))
+                               (lambda (n) (values n (number->string n)))
+                               (lambda (n) (+ n 1))
+                               0
+                               exact-integer-comparator))
+           (work-twice
+            (let ((used 0))
+              (lambda (k v)
+                (if (< used 2)
+                    (begin
+                      (set! used (+ used 1))
+                      #t)
+                    (assertion-violation #f "broken!"))))))
+        (test-assert "Pruning"
+          (guard
+              (exn ((assertion-violation? exn) #t)
+                   (else #f))
+            (hash-table-prune! work-twice broken-prune-test-table)))
+        (test "Size is correct" 8
+          (hash-table-size broken-prune-test-table))
+        (test "0 is gone" #f
+          (hash-table-ref/default broken-prune-test-table 0 #f))
+        (test "1 is gone" #f
+          (hash-table-ref/default broken-prune-test-table 0 #f))
+        (for-each
+         (lambda (k)
+           (test (string-append (number->string k) " is still there")
+               (number->string k)
+             (hash-table-ref/default broken-prune-test-table k #f)))
+         '(2 3 4 5 6 7 8 9))
+        (test-values "Insertion order maintained"
+            (values '#(2 3 4 5 6 7 8 9) '#("2" "3" "4" "5" "6" "7" "8" "9"))
+          (hash-table-entries broken-prune-test-table))))
+    (test-group "Can’t prune an immutable hash table"
+      (let ((immutable-prune-test-table
+             (hash-table-copy
+              (hash-table-unfold (lambda (n) (>= n 10))
+                                 (lambda (n) (values n (number->string n)))
+                                 (lambda (n) (+ n 1))
+                                 0
+                                 exact-integer-comparator)
+              #f)))
+        (test-error "Can’t prune" assertion-violation?
+          (hash-table-prune! (lambda (k v) (even? k)) immutable-prune-test-table))
+        (test-error "Can’t prune even if the proc always returns #f" assertion-violation?
+          (hash-table-prune! (lambda (k v) #f) immutable-prune-test-table))
+        (test "Size is correct" 10
+          (hash-table-size immutable-prune-test-table))
+        (for-each
+         (lambda (k)
+           (test (string-append (number->string k) " is still there")
+               (number->string k)
+             (hash-table-ref/default immutable-prune-test-table k #f)))
+         '(0 1 2 3 4 5 6 7 8 9))
+        (test-values "Insertion order maintained"
+            (values '#(0 1 2 3 4 5 6 7 8 9)
+                    '#("0" "1" "2" "3" "4" "5" "6" "7" "8" "9"))
+          (hash-table-entries immutable-prune-test-table))))))
 
 
 ;; Copying and conversion
 (test-group "Copying and conversion"
-  #f)
+  (test-group "Hash-table-copy"
+    ;; Hash-table-copy with mutable? set to #f is tested throughout
+    ;; this test suite
+    (let* ((copy-test-table
+            (hash-table-unfold (lambda (n) (>= n 10))
+                               (lambda (n) (values n (number->string n)))
+                               (lambda (n) (+ n 1))
+                               0
+                               exact-integer-comparator))
+           (copy2-test-table (hash-table-copy copy-test-table #t)))
+      (test "Sizes are the same" (hash-table-size copy-test-table) (hash-table-size copy2-test-table))
+      (test-values "Entries are the same" (hash-table-entries copy-test-table) (hash-table-entries copy2-test-table))
+      (test "Mutating one copy’s entry doesn’t mutate the other" "0"
+        (begin
+          (hash-table-replace! copy-test-table 0 "zero")
+          (hash-table-ref/default copy2-test-table 0 #f)))
+      (test "Adding an entry to one copy doesn’t mutate the other" #f
+        (begin
+          (hash-table-add! copy-test-table 10 "10")
+          (hash-table-ref/default copy2-test-table 10 #f)))
+      (test "Mutating the other copy’s entry doesn’t mutate the first" "9"
+        (begin
+          (hash-table-replace! copy2-test-table 9 "nine")
+          (hash-table-ref/default copy-test-table 9 #f)))
+      (test "Adding an entry to the other copy doesn’t mutate the first" #f
+        (begin
+          (hash-table-add! copy2-test-table -1 "-1")
+          (hash-table-ref/default copy-test-table -1 #f)))))
+
+  (test-group "Hash-table-empty-copy"
+    (let* ((copy-test-table
+            (hash-table-unfold (lambda (n) (>= n 10))
+                               (lambda (n) (values n (number->string n)))
+                               (lambda (n) (+ n 1))
+                               0
+                               exact-integer-comparator))
+           (empty-copy-test-table (hash-table-empty-copy copy-test-table)))
+      (test "Size is correct" 0
+        (hash-table-size empty-copy-test-table))
+      (test-assert "It’s empty" (hash-table-empty? empty-copy-test-table))
+      (hash-table-for-each
+       (lambda (k v)
+         (test (string-append (number->string k) " isn’t there") #f
+           (hash-table-ref/default empty-copy-test-table k #f)))
+       copy-test-table)
+      (hash-table-for-each
+       (lambda (k v)
+         (test-assert (string-append (number->string k) " can be added")
+           (begin
+             (hash-table-add! empty-copy-test-table k #t)
+             (hash-table-ref/default empty-copy-test-table k #f))))
+       copy-test-table)))
+
+
+  (test-group "Hash-table->alist"
+    (let ((alist-test-table
+           (hash-table-unfold (lambda (n) (>= n 10))
+                              (lambda (n) (values n (number->string n)))
+                              (lambda (n) (+ n 1))
+                              0
+                              exact-integer-comparator)))
+      (test "Converts to an alist"
+          '((9 . "9") (8 . "8") (7 . "7") (6 . "6") (5 . "5")
+            (4 . "4") (3 . "3") (2 . "2") (1 . "1") (0 . "0"))
+        (hash-table->alist alist-test-table)))))
 
 
 ;; Hash tables as sets
 
 (test-group "Hash tables as sets"
-  #f)
+  (test-group "Hash-table-union!"
+    (let ((evens-table
+           (hash-table-unfold (lambda (n) (>= n 10))
+                              (lambda (n) (values n #t))
+                              (lambda (n) (+ n 2))
+                              0
+                              exact-integer-comparator))
+          (odds-table
+           (hash-table-unfold (lambda (n) (>= n 10))
+                              (lambda (n) (values n #f))
+                              (lambda (n) (+ n 2))
+                              1
+                              exact-integer-comparator)))
+      (test-equal eq? "Doing the union" evens-table
+        (hash-table-union! evens-table odds-table))
+      (test "Size is correct" 10
+        (hash-table-size evens-table))
+      (test "Insertion order"
+          '#(0 2 4 6 8 1 3 5 7 9)
+        (hash-table-keys evens-table))
+      (for-each
+       (lambda (k)
+         (test (string-append (number->string k) " has the correct value")
+             (even? k)
+           (hash-table-ref/default evens-table k 'not-there)))
+       '(0 1 2 3 4 5 6 7 8 9))
+      (test-values "Odds table is the same"
+          (values '#(1 3 5 7 9)
+                  '#(#f #f #f #f #f))
+        (hash-table-entries odds-table)))
+    (let ((one-two-three (hash-table exact-integer-comparator
+                                     1 'a
+                                     2 'a
+                                     3 'a))
+          (three-four-five (hash-table exact-integer-comparator
+                                       3 'b
+                                       4 'b
+                                       5 'b)))
+      (test-equal eq? "Doing the union" one-two-three
+        (hash-table-union! one-two-three three-four-five))
+      (test "Size is correct" 5
+        (hash-table-size one-two-three))
+      (test "Insertion order" '#(1 2 3 4 5)
+        (hash-table-keys one-two-three))
+      (test "1 is a" 'a (hash-table-ref/default one-two-three 1 #f))
+      (test "2 is a" 'a (hash-table-ref/default one-two-three 2 #f))
+      (test "3 is a" 'a (hash-table-ref/default one-two-three 3 #f))
+      (test "4 is b" 'b (hash-table-ref/default one-two-three 4 #f))
+      (test "5 is b" 'b (hash-table-ref/default one-two-three 5 #f))))
+
+  (test-group "Hash-table-intersection!"
+    (let ((one-two-three (hash-table exact-integer-comparator
+                                     1 'a
+                                     2 'a
+                                     3 'a))
+          (three-four-five (hash-table exact-integer-comparator
+                                       3 'b
+                                       4 'b
+                                       5 'b)))
+      (test-equal eq? "Doing the intersection" one-two-three
+        (hash-table-intersection! one-two-three three-four-five))
+      (test "Size is correct" 1
+        (hash-table-size one-two-three))
+      (test "1 is gone" #f (hash-table-ref/default one-two-three 1 #f))
+      (test "2 is gone" #f (hash-table-ref/default one-two-three 2 #f))
+      (test "3 is a" 'a (hash-table-ref/default one-two-three 3 #f))
+      (test "4 isn’t there" #f (hash-table-ref/default one-two-three 4 #f))
+      (test "5 isn’t there" #f (hash-table-ref/default one-two-three 5 #f))
+      (test-values "The other table is unaffected"
+          (values '#(3 4 5)
+                  '#(b b b))
+        (hash-table-entries three-four-five))))
+
+  (test-group "Hash-table-difference!"
+    (let ((one-two-three (hash-table exact-integer-comparator
+                                     1 'a
+                                     2 'a
+                                     3 'a))
+          (three-four-five (hash-table exact-integer-comparator
+                                       3 'b
+                                       4 'b
+                                       5 'b)))
+      (test-equal eq? "Doing the difference" one-two-three
+        (hash-table-difference! one-two-three three-four-five))
+      (test "Size is correct" 2
+        (hash-table-size one-two-three))
+      (test "1 is a" 'a (hash-table-ref/default one-two-three 1 #f))
+      (test "2 is a" 'a (hash-table-ref/default one-two-three 2 #f))
+      (test "3 is gone" #f (hash-table-ref/default one-two-three 3 #f))
+      (test "4 isn’t there" #f (hash-table-ref/default one-two-three 4 #f))
+      (test "5 isn’t there" #f (hash-table-ref/default one-two-three 5 #f))
+      (test-values "The other table is unaffected"
+          (values '#(3 4 5)
+                  '#(b b b))
+        (hash-table-entries three-four-five))))
+
+  (test-group "Hash-table-xor!"
+    (let ((one-two-three (hash-table exact-integer-comparator
+                                     1 'a
+                                     2 'a
+                                     3 'a))
+          (three-four-five (hash-table exact-integer-comparator
+                                       3 'b
+                                       4 'b
+                                       5 'b)))
+      (test-equal eq? "Doing the xor" one-two-three
+        (hash-table-xor! one-two-three three-four-five))
+      (test "Size is correct" 4
+        (hash-table-size one-two-three))
+      (test "1 is a" 'a (hash-table-ref/default one-two-three 1 #f))
+      (test "2 is a" 'a (hash-table-ref/default one-two-three 2 #f))
+      (test "3 is gone" #f (hash-table-ref/default one-two-three 3 #f))
+      (test "4 is b" 'b (hash-table-ref/default one-two-three 4 #f))
+      (test "5 is b" 'b (hash-table-ref/default one-two-three 5 #f))
+      (test-values "The other table is unaffected"
+          (values '#(3 4 5)
+                  '#(b b b))
+        (hash-table-entries three-four-five)))))
 
 ;; local Variables:
 ;; eval: (put 'test 'scheme-indent-function 2)

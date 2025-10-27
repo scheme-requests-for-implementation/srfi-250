@@ -2,6 +2,7 @@
         (rnrs r5rs)
         (chibi test)
         (only (srfi :1) list-tabulate)
+        (srfi :6)
         (srfi :27)
         (srfi :128)
         (srfi :250)

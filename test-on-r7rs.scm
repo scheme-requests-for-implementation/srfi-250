@@ -1,5 +1,6 @@
 (import (scheme base)
         (scheme char)
+        (scheme write)
         (chibi test)
         (only (srfi 1) list-tabulate)
         (srfi 27)
@@ -10,6 +11,8 @@
 (define-syntax assert
   (syntax-rules ()
     ((_ what) (unless what (error "assertion failed")))))
+(define (assertion-violation who msg . rest)
+  (apply error msg rest))
 (define assertion-violation? error-object?)
 
 (test-begin "SRFI 250")

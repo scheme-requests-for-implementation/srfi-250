@@ -667,6 +667,7 @@
    ht))
 
 (define (hash-table-prune! proc ht)
+  (define original-size (hash-table-size ht))
   (unless (hash-table-mutable? ht)
     (assertion-violation 'hash-table-prune!
                          "hash table is immutable"
@@ -674,16 +675,17 @@
   (let loop ((cur (hash-table-cursor-first ht)) (n-deleted 0))
     (if (hash-table-cursor-at-end? ht cur)
         (begin
-          (hash-table-size-set! ht (- (hash-table-size ht) n-deleted))
           (hash-table-prune-dead-entries-at-end! ht)
-          (when (> (- (hash-table-next-entry ht) (hash-table-size ht))
+          (when (> (- (hash-table-next-entry ht) original-size)
                    (* 1/3 (hash-table-size ht)))
             (hash-table-prune-dead-entries! ht #f))
           n-deleted)
         (let-values (((k v) (hash-table-cursor-key+value ht cur)))
           (if (and (proc k v)
                    (hash-table-delete-one! ht k))
-              (loop (hash-table-cursor-next ht cur) (+ n-deleted 1))
+              (begin
+                (hash-table-size-set! ht (- (hash-table-size ht) 1))
+                (loop (hash-table-cursor-next ht cur) (+ n-deleted 1)))
               (loop (hash-table-cursor-next ht cur) n-deleted))))))
 
 (define (hash-table-copy ht mutable?)
@@ -711,7 +713,7 @@
   (hash-table-for-each
    (lambda (k v)
      (unless (hash-table-contains? ht_1 k)
-       (hash-table-set! ht_2 k v)))
+       (hash-table-set! ht_1 k v)))
    ht_2)
   ht_1)
 
