@@ -1,4 +1,5 @@
 (import (scheme base)
+        (scheme char)
         (chibi test)
         (only (srfi 1) list-tabulate)
         (srfi 27)
@@ -6,10 +7,12 @@
         (rename (srfi 128)
                 (default-hash equal-hash)))
 
+(define-syntax assert
+  (syntax-rules ()
+    ((_ what) (unless what (error "assertion failed")))))
 (define assertion-violation? error-object?)
 
 (test-begin "SRFI 250")
 (include "test-srfi-250.scm")
 (test-end "SRFI 250")
 (test-exit)
-
