@@ -1,3 +1,7 @@
+; SPDX-FileCopyrightText: 2025 Daphne Preston-Kendal
+;
+; SPDX-License-Identifier: MIT
+
 (define (make-compact-array size)
   (cond ((< size #xFF) (make-u8vector size #xFF))
         ((< size #xFFFF) (make-u16vector size #xFFFF))

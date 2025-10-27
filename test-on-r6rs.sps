@@ -1,3 +1,7 @@
+; SPDX-FileCopyrightText: 2025 Daphne Preston-Kendal
+;
+; SPDX-License-Identifier: MIT
+
 (import (rnrs)
         (rnrs r5rs)
         (chibi test)

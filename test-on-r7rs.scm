@@ -1,3 +1,7 @@
+; SPDX-FileCopyrightText: 2025 Daphne Preston-Kendal
+;
+; SPDX-License-Identifier: MIT
+
 (import (scheme base)
         (scheme char)
         (scheme write)

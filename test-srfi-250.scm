@@ -1,3 +1,7 @@
+; SPDX-FileCopyrightText: 2025 Daphne Preston-Kendal
+;
+; SPDX-License-Identifier: MIT
+
 (define exact-integer-comparator
   (make-comparator (lambda (x) (and (integer? x) (exact? x)))
                    =

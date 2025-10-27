@@ -1,3 +1,7 @@
+; SPDX-FileCopyrightText: 2025 Daphne Preston-Kendal
+;
+; SPDX-License-Identifier: MIT
+
 ;; -*- eldoc-documentation-function: eldoc-documentation-default -*-
 ;; scheme-complete eldoc is bizarrely slow in this buffer
 (begin ; meze only supports one expression per file

@@ -1,3 +1,7 @@
+; SPDX-FileCopyrightText: 2025 Daphne Preston-Kendal
+;
+; SPDX-License-Identifier: MIT
+
 (define (make-compact-array size)
   (cond ((fx<? size #xFF)
          (let ((bv (make-bytevector (fx+ size 2) #xFF)))

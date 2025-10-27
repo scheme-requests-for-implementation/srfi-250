@@ -1,3 +1,7 @@
+; SPDX-FileCopyrightText: 2025 Daphne Preston-Kendal
+;
+; SPDX-License-Identifier: MIT
+
 ;; SRFI 250 implementation (with prelude) for Guile
 
 (define-module (srfi srfi-250)
