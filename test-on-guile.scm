@@ -1,0 +1,16 @@
+(import (rnrs)
+        (rnrs r5rs)
+        (chibi test)
+        (only (srfi :1) list-tabulate)
+        (srfi :27)
+        (srfi :128)
+        (srfi :250)
+        (only (guile) include))
+
+(define (exact-integer? x)
+  (and (integer? x) (exact? x)))
+
+(test-begin "SRFI 250")
+(include "test-srfi-250.scm")
+(test-end "SRFI 250")
+(test-exit)
