@@ -78,7 +78,7 @@
 
     (define-record-type Hash-Table
       (%make-hash-table type-test-function hash-function same?-function
-                        size next-entry compact-index
+                        size next-entry compact-index compact-index-max-fill
                         keys-vector values-vector mutable?)
       hash-table?
       (type-test-function hash-table-type-test-function)
