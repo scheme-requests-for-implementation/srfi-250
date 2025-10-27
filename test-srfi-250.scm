@@ -573,6 +573,9 @@
                   (hash-table-size big-set-test-table))
                 (loop (+ idx 1))))))
 
+        (test "Insertion order" (vector->list order)
+          (hash-table-map->list (lambda (k v) k) big-set-test-table))
+
         (test-group "Replacing old values"
           (let loop ((idx 0))
             (when (< idx (vector-length order))
@@ -604,36 +607,36 @@
           (hash-table-ref/default immutable-set-test-table 104 #f))))
     (test-group "Multiple mutations at once"
       (let* ((multi-set-test-table (make-hash-table char-comparator))
-             (keys (string->list "abcdefghijklmnopqrstuvwxyz")))
+             (keys (reverse (string->list "abcdefghijklmnopqrstuvwxyz"))))
         (test-assert "Setting"
           (begin
             (hash-table-set! multi-set-test-table
-                             #\a 'vowel
-                             #\b 'consonant
-                             #\c 'consonant
-                             #\d 'consonant
-                             #\e 'vowel
-                             #\f 'consonant
-                             #\g 'consonant
-                             #\h 'consonant
-                             #\i 'vowel
-                             #\j 'consonant
-                             #\k 'consonant
-                             #\l 'consonant
-                             #\m 'consonant
-                             #\n 'consonant
-                             #\o 'vowel
-                             #\p 'consonant
-                             #\q 'consonant
-                             #\r 'consonant
-                             #\s 'consonant
-                             #\t 'consonant
-                             #\u 'vowel
-                             #\v 'consonant
-                             #\w 'consonant
-                             #\x 'consonant
+                             #\z 'consonant
                              #\y 'consonant
-                             #\z 'consonant)
+                             #\x 'consonant
+                             #\w 'consonant
+                             #\v 'consonant
+                             #\u 'vowel
+                             #\t 'consonant
+                             #\s 'consonant
+                             #\r 'consonant
+                             #\q 'consonant
+                             #\p 'consonant
+                             #\o 'vowel
+                             #\n 'consonant
+                             #\m 'consonant
+                             #\l 'consonant
+                             #\k 'consonant
+                             #\j 'consonant
+                             #\i 'vowel
+                             #\h 'consonant
+                             #\g 'consonant
+                             #\f 'consonant
+                             #\e 'vowel
+                             #\d 'consonant
+                             #\c 'consonant
+                             #\b 'consonant
+                             #\a 'vowel)
             #t))
         (for-each
          (lambda (key)
@@ -791,7 +794,11 @@
                                                    " is still there")
                                   (number->string other-key)
                                 (hash-table-ref/default ht other-key #f)))
-                            (cdr more))))
+                            (cdr more))
+                           (unless (or (null? (cdr more))
+                                       (null? (cddr more)))
+                             (test-assert "Insertion order still maintained"
+                               (apply < (hash-table-map->list (lambda (k v) k) ht))))))
                        (loop (cdr more)))))))
             (test-group "Insertion order"
               (do-tests (maker)
@@ -825,7 +832,7 @@
     (let ((intern-test-table (make-hash-table string-comparator 10)))
       (test-group "Interning new entries"
         (let loop ((n 0))
-          (when (< n 1000)
+          (when (<= n 1000)
             (let ()
               (define key (number->string n 16))
               (test (string-append "Interning " key) n
@@ -841,8 +848,8 @@
             (loop (+ n 1)))))
 
       (test-group "Trying to re-intern"
-        (let loop ((n 0))
-          (when (< n 1000)
+        (let loop ((n 1000))
+          (when (>= n 0)
             (let ()
               (define key (number->string n 16))
               (test (string-append "Re-interning " key) n
@@ -855,7 +862,7 @@
                   (apply < (hash-table-map->list (lambda (k v)
                                                    (string->number k 16))
                                                  intern-test-table)))))
-            (loop (+ n 1))))))
+            (loop (- n 1))))))
     (let ((immutable-intern-test-table
            (hash-table-copy (hash-table exact-integer-comparator
                                         100 101
@@ -1286,10 +1293,10 @@
 (test-group "Mapping and folding"
   (test-group "Hash-table-map"
     (let ((map-test-table
-           (hash-table-unfold (lambda (c) (char>? c #\z))
+           (hash-table-unfold (lambda (c) (char<? c #\a))
                               (lambda (c) (values c (char-upcase c)))
-                              (lambda (c) (integer->char (+ 1 (char->integer c))))
-                              #\a
+                              (lambda (c) (integer->char (- (char->integer c) 1)))
+                              #\z
                               char-comparator
                               26))
           (mapped-test-table #f))
