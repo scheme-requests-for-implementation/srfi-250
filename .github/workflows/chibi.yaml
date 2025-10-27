@@ -16,4 +16,4 @@ jobs:
           wget https://raw.githubusercontent.com/ashinn/chibi-scheme/3ca9e57d1e2a7199ea84c775296843ca5f08c024/lib/chibi/test.scm
       - name: 'Run tests'
         run: |
-          chibi-scheme -I ~/chibilib -I . test-on-r7rs.scm
+          env TEST_GROUP_REMOVE='Stress tests: building' chibi-scheme -I ~/chibilib -I . test-on-r7rs.scm

@@ -101,7 +101,7 @@
 
 ;; Test that add! doesn’t replace
 
-(test-group "Replacing doesn’t add and vice-versa"
+(test-group "Stress tests: Replacing doesn’t add and vice-versa"
   (set! size 10000)
   (test-group "trying to add entries that already exist"
     (let ((ht (make-hash-table exact-integer-comparator size)))
@@ -221,7 +221,7 @@
 
 ;; Adding and deleting
 
-(test-group "Stress test: adding and deleting"
+(test-group "Stress tests: adding and deleting"
   (set! size 1000)
   (let steps-loop ((more-steps '((2 . 1) (3 . 1) (3 . 2) (4 . 1) (4 . 3))))
     (unless (null? more-steps)
