@@ -1,0 +1,19 @@
+on: [push]
+jobs:
+  test-chibi:
+    runs-on: ubuntu-latest
+    container:
+      image: schemers/chibi:latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: 'Grab newer version of (chibi test)'
+        run: |
+          apt-get update
+          apt-get install -yy wget
+          mkdir -p ~/chibilib/chibi
+          cd ~/chibilib/chibi
+          wget https://raw.githubusercontent.com/ashinn/chibi-scheme/3ca9e57d1e2a7199ea84c775296843ca5f08c024/lib/chibi/test.sld
+          wget https://raw.githubusercontent.com/ashinn/chibi-scheme/3ca9e57d1e2a7199ea84c775296843ca5f08c024/lib/chibi/test.scm
+      - name: 'Run tests'
+        run: |
+          env TEST_GROUP_REMOVE='Stress tests: building' chibi-scheme -I ~/chibilib -I . test-on-r7rs.scm

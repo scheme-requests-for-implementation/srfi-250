@@ -1,5 +1,6 @@
 ;; -*- eldoc-documentation-function: eldoc-documentation-default -*-
 ;; scheme-complete eldoc is bizarrely slow in this buffer
+(begin ; meze only supports one expression per file
 
 (define *nice-n-buckets*
   '#(2 2 3 5 5 7 7 11 11 13 13 17 17 19 19 23 23 23 23 29 29 31 31 31 31
@@ -162,8 +163,7 @@
     (let loop ((from-idx 0)
                (to-idx 0))
       ;;(display from-idx) (newline) (display to-idx) (newline) (newline)
-      (cond ((or (>= from-idx (hash-table-next-entry ht))
-                 (unfilled? (vector-ref (hash-table-keys-vector ht) from-idx)))
+      (cond ((>= from-idx (hash-table-next-entry ht))
              (vector-fill! (hash-table-keys-vector ht)
                            *unfilled*
                            (hash-table-size ht)
@@ -175,8 +175,35 @@
              (hash-table-next-entry-set! ht (hash-table-size ht)))
             ((deletion? (vector-ref (hash-table-keys-vector ht) from-idx))
              (unless fast?
-               (compact-array-delete! (hash-table-compact-index ht)
-                                      (vector-ref (hash-table-values-vector ht) from-idx)))
+               (let ((deleted-bucket (vector-ref (hash-table-values-vector ht) from-idx)))
+                 (compact-array-delete! (hash-table-compact-index ht)
+                                        deleted-bucket)
+                 (let loop ((deleted-bucket deleted-bucket)
+                            (examine-bucket (+ deleted-bucket 1)))
+                   (let ((examine-bucket
+                          (modulo examine-bucket
+                                  (compact-array-length
+                                   (hash-table-compact-index ht)))))
+                     (let ((collision-idx
+                            (compact-array-ref (hash-table-compact-index ht)
+                                               examine-bucket)))
+                       (when collision-idx
+                         (let* ((key (vector-ref (hash-table-keys-vector ht)
+                                                 collision-idx))
+                                (new-bucket
+                                 (if (deletion? key)
+                                     (vector-ref (hash-table-values-vector ht)
+                                                 collision-idx)
+                                     (hash-table-bucket-for-key ht key))))
+                           (if (eqv? new-bucket deleted-bucket)
+                               (begin
+                                 (compact-array-set! (hash-table-compact-index ht)
+                                                     deleted-bucket
+                                                     collision-idx)
+                                 (compact-array-delete! (hash-table-compact-index ht)
+                                                        examine-bucket)
+                                 (loop examine-bucket (+ examine-bucket 1)))
+                               (loop deleted-bucket (+ examine-bucket 1))))))))))
              (loop (+ from-idx 1) to-idx))
             ((eqv? from-idx to-idx) (loop (+ from-idx 1) (+ to-idx 1)))
             (else
@@ -233,9 +260,13 @@
 
 ;; add to the entries arrays, setting the bucket in the compact index
 (define (hash-table-add-entry! ht bucket key value)
-  (if (>= (hash-table-next-entry ht)
-          (vector-length (hash-table-keys-vector ht)))
-      (hash-table-grow-entries! ht))
+  (when (>= (hash-table-next-entry ht)
+            (vector-length (hash-table-keys-vector ht)))
+    (if (eqv? (hash-table-size ht) (hash-table-next-entry ht))
+        (hash-table-grow-entries! ht)
+        (begin
+          (hash-table-grow-entries! ht)
+          (set! bucket (hash-table-bucket-for-key ht key)))))
   (when (hash-table-compact-index-must-grow? ht)
     (hash-table-grow-compact-index! ht)
     (set! bucket (hash-table-bucket-for-key ht key)))
@@ -416,7 +447,7 @@
 
 (define (hash-table-pop! ht)
   (unless (hash-table-mutable? ht)
-    (assertion-violation 'hash-table-delete!
+    (assertion-violation 'hash-table-pop!
                          "hash table is immutable"
                          ht))
   (when (hash-table-empty? ht)
@@ -425,11 +456,12 @@
                          ht))
   (let* ((idx (- (hash-table-next-entry ht) 1))
          (key (vector-ref (hash-table-keys-vector ht) idx))
-         (value (vector-ref (hash-table-values-vector ht) idx)))
-    (vector-set! (hash-table-keys-vector ht) idx *unfilled*)
-    (vector-set! (hash-table-values-vector ht) idx *unfilled*)
+         (value (vector-ref (hash-table-values-vector ht) idx))
+         (bucket (hash-table-bucket-for-key ht key)))
+    (vector-set! (hash-table-keys-vector ht) idx *deletion*)
+    (vector-set! (hash-table-values-vector ht) idx bucket)
     (hash-table-size-set! ht (- (hash-table-size ht) 1))
-    (hash-table-next-entry-set! ht idx)
+    (hash-table-prune-dead-entries-at-end! ht)
     (values key value)))
 
 (define (hash-table-clear! ht)
@@ -635,6 +667,7 @@
    ht))
 
 (define (hash-table-prune! proc ht)
+  (define original-size (hash-table-size ht))
   (unless (hash-table-mutable? ht)
     (assertion-violation 'hash-table-prune!
                          "hash table is immutable"
@@ -642,16 +675,17 @@
   (let loop ((cur (hash-table-cursor-first ht)) (n-deleted 0))
     (if (hash-table-cursor-at-end? ht cur)
         (begin
-          (hash-table-size-set! ht (- (hash-table-size ht) n-deleted))
           (hash-table-prune-dead-entries-at-end! ht)
-          (when (> (- (hash-table-next-entry ht) (hash-table-size ht))
+          (when (> (- (hash-table-next-entry ht) original-size)
                    (* 1/3 (hash-table-size ht)))
             (hash-table-prune-dead-entries! ht #f))
           n-deleted)
         (let-values (((k v) (hash-table-cursor-key+value ht cur)))
           (if (and (proc k v)
                    (hash-table-delete-one! ht k))
-              (loop (hash-table-cursor-next ht cur) (+ n-deleted 1))
+              (begin
+                (hash-table-size-set! ht (- (hash-table-size ht) 1))
+                (loop (hash-table-cursor-next ht cur) (+ n-deleted 1)))
               (loop (hash-table-cursor-next ht cur) n-deleted))))))
 
 (define (hash-table-copy ht mutable?)
@@ -679,7 +713,7 @@
   (hash-table-for-each
    (lambda (k v)
      (unless (hash-table-contains? ht_1 k)
-       (hash-table-set! ht_2 k v)))
+       (hash-table-set! ht_1 k v)))
    ht_2)
   ht_1)
 
@@ -771,3 +805,5 @@
                          "hash table is immutable"
                          ht))
   (hash-table-set! ht key (updater (hash-table-ref/default ht key default))))
+
+)

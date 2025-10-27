@@ -1,0 +1,21 @@
+on: [push]
+jobs:
+  test-chez:
+    runs-on: ubuntu-latest
+    container:
+      image: schemers/chezscheme:latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: 'Install chez-srfi'
+        run: |
+          apt-get update
+          apt-get install -yy git
+          git clone https://github.com/arcfide/chez-srfi.git
+          cd chez-srfi
+          ./install.chezscheme.sps ~/chezlib
+      - name: 'Install (chibi test)'
+        run: |
+          git clone https://codeberg.org/dpk/chibi-lib.git ~/chezlib/chibi
+      - name: 'Run tests'
+        run: |
+          env CHEZSCHEMELIBDIRS="$HOME/chezlib:" scheme --program test-on-r6rs.sps
