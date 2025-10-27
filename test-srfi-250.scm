@@ -1,5 +1,3 @@
-;; Basic growing a hash table entry-by-entry
-
 (define exact-integer-comparator
   (make-comparator (lambda (x) (and (integer? x) (exact? x)))
                    =
@@ -20,6 +18,19 @@
 
 (define string-comparator
   (make-comparator string? string=? string<? equal-hash))
+
+(define (vector-shuffle! vec src)
+  (define rand (random-source-make-integers src))
+  (let loop ((i (- (vector-length vec) 1)))
+    (when (>= i 1)
+      (let* ((j (rand i))
+             (vi (vector-ref vec i))
+             (vj (vector-ref vec j)))
+        (vector-set! vec i vj)
+        (vector-set! vec j vi)
+        (loop (- i 1))))))
+
+;; Basic growing a hash table entry-by-entry
 
 (define size 1000000)
 
@@ -188,11 +199,7 @@
           (hash-table-add! ht n n)
           (vector-set! order n n)
           (loop (+ n 1))))
-      ;; yes, i know this is not a good way to randomize the order of an
-      ;; array, but it’s good enough for the purpose of this test
-      (let ((rand (random-source-make-integers source)))
-        (vector-sort! (lambda (a b)
-                        (eqv? (rand 2) 0)) order))
+      (vector-shuffle! order source)
       (let loop ((idx 0))
         (when (< idx (vector-length order))
           (let ((n (vector-ref order idx)))
@@ -548,13 +555,8 @@
             (vector-set! vals idx idx)
             (loop (+ idx 1))))
         (random-source-pseudo-randomize! source 6 4)
-        (let ((rand (random-source-make-integers source)))
-          (vector-sort! (lambda (a b)
-                          (eqv? (rand 2) 0))
-                        order)
-          (vector-sort! (lambda (a b)
-                          (eqv? (rand 2) 0))
-                        vals))
+        (vector-shuffle! order source)
+        (vector-shuffle! vals source)
         (test-group "Creating new entries"
           (let loop ((idx 0))
             (when (< idx (vector-length order))
