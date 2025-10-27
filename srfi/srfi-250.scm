@@ -11,6 +11,7 @@
   #:use-module ((guile) #:select (include
                                   procedure-name))
   #:use-module (ice-9 format)
+  #:use-module (srfi srfi-4)
   #:use-module ((srfi srfi-9 gnu) #:select (set-record-type-printer!))
   #:use-module (srfi srfi-128) ; https://codeberg.org/pukkamustard/guile-srfi-128
   #:duplicates (last)
@@ -113,7 +114,7 @@
 (define (hash-table-immutablize! ht)
   (hash-table-mutable?-set! ht #f))
 
-(include "250/internal/r6rs-compact-arrays.scm")
+(include "250/internal/srfi-compact-arrays.scm")
 (include "250/hash-tables.scm")
 
 (set-record-type-printer! (record-type-descriptor hash-table)
